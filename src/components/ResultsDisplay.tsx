@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { ProduceInfo } from '../lib/mockData';
+import type { ProduceInfo } from '../services/openaiService';
 import { Leaf, Route, Droplets, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface ResultsDisplayProps {

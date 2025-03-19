@@ -99,6 +99,11 @@ const getRipeningMethod = (produce: string): string | null => {
 // Estimate distance between two locations
 const estimateDistance = async (source: string, destination: string): Promise<number> => {
   try {
+    toast({
+      title: "Computing travel distance",
+      description: `Estimating distance from ${source} to ${destination}...`,
+    });
+    
     // Simplified distance calculator using pre-defined distances
     const distanceMap: Record<string, Record<string, number>> = {
       // Distances from major European cities/countries to other locations (in km)
@@ -173,7 +178,9 @@ const estimateDistance = async (source: string, destination: string): Promise<nu
     }
     
     // If no match, provide an educated guess based on keywords
-    const continentDistances = {
+    type ContinentKey = 'europe' | 'africa' | 'asia' | 'north america' | 'south america' | 'australia';
+    
+    const continentDistances: Record<ContinentKey, Record<ContinentKey, number>> = {
       "europe": { "europe": 1000, "africa": 3000, "asia": 8000, "north america": 8000, "south america": 10000, "australia": 15000 },
       "africa": { "europe": 3000, "africa": 2000, "asia": 7000, "north america": 10000, "south america": 8000, "australia": 12000 },
       "asia": { "europe": 8000, "africa": 7000, "asia": 3000, "north america": 12000, "south america": 15000, "australia": 8000 },
@@ -183,8 +190,8 @@ const estimateDistance = async (source: string, destination: string): Promise<nu
     };
 
     // Helper to detect continent from location string
-    const getContinent = (loc: string): string => {
-      const continents = {
+    const getContinent = (loc: string): ContinentKey => {
+      const continents: Record<ContinentKey, string[]> = {
         "europe": ["europe", "spain", "france", "italy", "germany", "uk", "poland", "netherlands", "belgium", "sweden", "norway", "finland", "denmark", "ireland", "portugal", "greece", "austria", "switzerland", "czech"],
         "africa": ["africa", "morocco", "egypt", "algeria", "tunisia", "south africa", "kenya", "ethiopia", "nigeria", "ghana"],
         "asia": ["asia", "china", "japan", "india", "thailand", "vietnam", "indonesia", "malaysia", "philippines", "singapore", "taiwan", "korea", "israel", "turkey", "saudi"],
@@ -195,7 +202,7 @@ const estimateDistance = async (source: string, destination: string): Promise<nu
 
       for (const [continent, keywords] of Object.entries(continents)) {
         if (keywords.some(keyword => loc.includes(keyword))) {
-          return continent;
+          return continent as ContinentKey;
         }
       }
       
@@ -205,7 +212,9 @@ const estimateDistance = async (source: string, destination: string): Promise<nu
     const sourceContinent = getContinent(normalizedSource);
     const destContinent = getContinent(normalizedDestination);
     
-    return continentDistances[sourceContinent as keyof typeof continentDistances][destContinent as keyof typeof continentDistances[typeof sourceContinent]];
+    console.log(`Estimated travel distance from ${source} (${sourceContinent}) to ${destination} (${destContinent}): ${continentDistances[sourceContinent][destContinent]} km`);
+    
+    return continentDistances[sourceContinent][destContinent];
   } catch (error) {
     console.error("Error estimating distance:", error);
     return 5000; // Default fallback distance

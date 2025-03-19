@@ -17,11 +17,16 @@ const Index = () => {
     setError(null);
     
     try {
+      console.log("Analyzing produce sustainability with Hugging Face...");
+      console.log("Form data:", formData);
+      
       const data = await analyzeProduceSustainabilityOffline(
         formData.produceName,
         formData.sourceLocation,
         formData.userLocation
       );
+      
+      console.log("Analysis results:", data);
       setResults(data);
     } catch (err) {
       console.error('Error analyzing produce:', err);
