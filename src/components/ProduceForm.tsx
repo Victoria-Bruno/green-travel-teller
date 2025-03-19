@@ -34,12 +34,17 @@ const ProduceForm: React.FC<ProduceFormProps> = ({ onSubmit, isLoading }) => {
     
     const userLocation = isManualLocation
       ? { 
-          city: manualCity, 
-          country: manualCountry, 
+          city: manualCity || null, 
+          country: manualCountry || null, 
           latitude: null, 
           longitude: null 
         }
-      : location;
+      : {
+          city: location.city || null,
+          country: location.country || null,
+          latitude: location.latitude,
+          longitude: location.longitude
+        };
     
     onSubmit({
       produceName,

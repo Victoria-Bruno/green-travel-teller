@@ -145,12 +145,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
         </button>
         
         <a 
-          href="https://www.seasonalfoodguide.org/"
+          href="https://www.europeanseasonalitycalendar.eu/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-sage-600 hover:text-sage-800 flex items-center gap-1 transition-colors"
         >
-          <span>Learn more about seasonal produce</span>
+          <span>Learn more about European seasonal produce</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>
