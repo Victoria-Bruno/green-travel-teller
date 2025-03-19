@@ -1,11 +1,75 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import ProduceForm from '../components/ProduceForm';
+import ResultsDisplay from '../components/ResultsDisplay';
+import LoadingState from '../components/LoadingState';
+import { Leaf } from 'lucide-react';
+import { fetchProduceInfo, type ProduceInfo } from '../lib/mockData';
 
 const Index = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<ProduceInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (formData: any) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const data = await fetchProduceInfo(
+        formData.produceName,
+        formData.sourceLocation,
+        formData.userLocation
+      );
+      setResults(data);
+    } catch (err) {
+      console.error('Error fetching produce info:', err);
+      setError('Failed to analyze the produce. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setResults(null);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-b from-sage-50 to-white">
+      <div className="container px-4 py-8 md:py-16 mx-auto max-w-4xl">
+        <header className="text-center mb-8 md:mb-12">
+          <div className="inline-flex items-center justify-center bg-sage-100 rounded-full p-2 mb-4">
+            <Leaf className="w-5 h-5 text-sage-600" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-2">
+            Sustainable Produce Tracker
+          </h1>
+          <p className="text-gray-600 max-w-lg mx-auto">
+            Analyze the environmental impact of your produce and discover more sustainable alternatives.
+          </p>
+        </header>
+
+        <main className="space-y-8">
+          {!results && !isLoading && (
+            <ProduceForm onSubmit={handleSubmit} isLoading={isLoading} />
+          )}
+          
+          {isLoading && <LoadingState />}
+          
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-center">
+              {error}
+            </div>
+          )}
+          
+          {results && !isLoading && (
+            <ResultsDisplay data={results} onReset={handleReset} />
+          )}
+        </main>
+        
+        <footer className="mt-12 text-center text-gray-500 text-xs">
+          <p>Making sustainable choices easier, one produce at a time.</p>
+        </footer>
       </div>
     </div>
   );
