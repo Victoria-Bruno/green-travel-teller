@@ -1,46 +1,31 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ProduceForm from '../components/ProduceForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
-import ApiKeyInput from '../components/ApiKeyInput';
 import { Leaf } from 'lucide-react';
-import { analyzeProduceSustainability, type ProduceInfo } from '../services/openaiService';
+import { type ProduceInfo } from '../services/openaiService'; 
+import { analyzeProduceSustainabilityOffline } from '../services/huggingfaceService';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<ProduceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
-
-  // Load API key from localStorage on initial render
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('openai_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
-
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('openai_api_key', key);
-  };
 
   const handleSubmit = async (formData: any) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const data = await analyzeProduceSustainability(
-        apiKey,
+      const data = await analyzeProduceSustainabilityOffline(
         formData.produceName,
         formData.sourceLocation,
         formData.userLocation
       );
       setResults(data);
     } catch (err) {
-      console.error('Error fetching produce info:', err);
-      setError('Failed to analyze the produce. Please check your API key and try again.');
+      console.error('Error analyzing produce:', err);
+      setError('Failed to analyze the produce. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -67,10 +52,7 @@ const Index = () => {
 
         <main className="space-y-8">
           {!results && !isLoading && (
-            <>
-              <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} apiKey={apiKey} />
-              <ProduceForm onSubmit={handleSubmit} isLoading={isLoading} />
-            </>
+            <ProduceForm onSubmit={handleSubmit} isLoading={isLoading} />
           )}
           
           {isLoading && <LoadingState />}
