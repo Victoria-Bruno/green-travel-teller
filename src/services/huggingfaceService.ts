@@ -1,7 +1,7 @@
-
 import { pipeline, env } from '@huggingface/transformers';
 import { toast } from "@/components/ui/use-toast";
 import type { ProduceInfo, AlternativeOption } from '../services/openaiService';
+import { calculateDistance, getUserLocationCoordinates } from './googleMapsService';
 
 // Configure transformers.js to not use local models (always download from hub)
 env.allowLocalModels = false;
@@ -81,10 +81,45 @@ const isInSeason = (produce: string, month: number): boolean => {
   return seasonMonths.includes(month);
 };
 
-// Determine common ripening methods for different produce
-const getRipeningMethod = (produce: string): string | null => {
+// Determine ripening methods for different produce based on source location
+const getRipeningMethod = (produce: string, sourceLocation: string): string | null => {
   const produceLower = produce.toLowerCase();
+  const sourceLower = sourceLocation.toLowerCase();
   
+  // Specific country-produce ripening methods
+  const ripeningMethods: Record<string, Record<string, string>> = {
+    "netherlands": {
+      "tomato": "Dutch greenhouse tomatoes use controlled temperature and lighting to ripen naturally.",
+      "pepper": "Dutch peppers are ripened in climate-controlled greenhouses using minimal artificial methods.",
+      "cucumber": "Greenhouse technology allows for natural ripening in controlled environments.",
+    },
+    "spain": {
+      "tomato": "Spanish tomatoes are often harvested green and ripened with ethylene gas during transport.",
+      "avocado": "Spanish avocados use controlled atmosphere storage to delay ripening until distribution.",
+      "orange": "Oranges from Spain naturally ripen on the tree before harvesting.",
+    },
+    "morocco": {
+      "tomato": "Moroccan tomatoes are typically treated with ethylene after harvest for uniform ripening.",
+      "citrus": "Natural ripening methods are used for citrus fruits from Morocco.",
+    },
+    "mexico": {
+      "avocado": "Mexican avocados are often treated with ethylene gas to ensure uniform ripening for export.",
+      "mango": "Mangoes from Mexico are commonly hot-water treated and ripened with controlled ethylene exposure.",
+    }
+  };
+  
+  // Check for specific country-produce combination
+  for (const [country, methods] of Object.entries(ripeningMethods)) {
+    if (sourceLower.includes(country)) {
+      for (const [crop, method] of Object.entries(methods)) {
+        if (produceLower.includes(crop)) {
+          return method;
+        }
+      }
+    }
+  }
+  
+  // Generic ripening methods by produce type if no specific match
   if (["banana", "avocado", "mango", "papaya", "kiwi"].some(fruit => produceLower.includes(fruit))) {
     return "Ethylene gas treatment is commonly used to ripen this produce after harvest.";
   }
@@ -94,131 +129,6 @@ const getRipeningMethod = (produce: string): string | null => {
   }
   
   return null; // Natural ripening
-};
-
-// Estimate distance between two locations
-const estimateDistance = async (source: string, destination: string): Promise<number> => {
-  try {
-    toast({
-      title: "Computing travel distance",
-      description: `Estimating distance from ${source} to ${destination}...`,
-    });
-    
-    // Simplified distance calculator using pre-defined distances
-    const distanceMap: Record<string, Record<string, number>> = {
-      // Distances from major European cities/countries to other locations (in km)
-      "netherlands": {
-        "spain": 1800,
-        "morocco": 2300,
-        "italy": 1300,
-        "france": 800,
-        "germany": 400,
-        "belgium": 150,
-        "portugal": 2000,
-        "greece": 2200,
-        "turkey": 3000,
-        "uk": 500,
-        "ireland": 900,
-        "poland": 1100,
-        "czech": 900,
-        "austria": 1000,
-        "switzerland": 800,
-        "mexico": 9000,
-        "usa": 7500,
-        "canada": 6500,
-        "brazil": 9500,
-        "argentina": 11500,
-        "chile": 12000,
-        "peru": 10500,
-        "colombia": 9000,
-        "ecuador": 9500,
-        "costa rica": 9200,
-        "china": 7800,
-        "india": 6500,
-        "thailand": 9000,
-        "vietnam": 9300,
-        "indonesia": 11000,
-        "malaysia": 10500,
-        "philippines": 10800,
-        "australia": 16000,
-        "new zealand": 18000,
-        "south africa": 9500,
-        "kenya": 7000,
-        "egypt": 3500,
-        "israel": 3600,
-      }
-    };
-
-    // Normalize location strings
-    const normalizedSource = source.toLowerCase();
-    const normalizedDestination = destination.toLowerCase();
-    
-    // Default base distance if exact match not found
-    let baseDistance = 1000;
-    
-    // Check if we have the distance in our map
-    for (const [baseCountry, distances] of Object.entries(distanceMap)) {
-      // For destination-to-source lookup
-      if (normalizedDestination.includes(baseCountry)) {
-        for (const [country, distance] of Object.entries(distances)) {
-          if (normalizedSource.includes(country)) {
-            return distance;
-          }
-        }
-      }
-      
-      // For source-to-destination lookup
-      if (normalizedSource.includes(baseCountry)) {
-        for (const [country, distance] of Object.entries(distances)) {
-          if (normalizedDestination.includes(country)) {
-            return distance;
-          }
-        }
-      }
-    }
-    
-    // If no match, provide an educated guess based on keywords
-    type ContinentKey = 'europe' | 'africa' | 'asia' | 'north america' | 'south america' | 'australia';
-    
-    const continentDistances: Record<ContinentKey, Record<ContinentKey, number>> = {
-      "europe": { "europe": 1000, "africa": 3000, "asia": 8000, "north america": 8000, "south america": 10000, "australia": 15000 },
-      "africa": { "europe": 3000, "africa": 2000, "asia": 7000, "north america": 10000, "south america": 8000, "australia": 12000 },
-      "asia": { "europe": 8000, "africa": 7000, "asia": 3000, "north america": 12000, "south america": 15000, "australia": 8000 },
-      "north america": { "europe": 8000, "africa": 10000, "asia": 12000, "north america": 2000, "south america": 5000, "australia": 14000 },
-      "south america": { "europe": 10000, "africa": 8000, "asia": 15000, "north america": 5000, "south america": 2000, "australia": 12000 },
-      "australia": { "europe": 15000, "africa": 12000, "asia": 8000, "north america": 14000, "south america": 12000, "australia": 1000 }
-    };
-
-    // Helper to detect continent from location string
-    const getContinent = (loc: string): ContinentKey => {
-      const continents: Record<ContinentKey, string[]> = {
-        "europe": ["europe", "spain", "france", "italy", "germany", "uk", "poland", "netherlands", "belgium", "sweden", "norway", "finland", "denmark", "ireland", "portugal", "greece", "austria", "switzerland", "czech"],
-        "africa": ["africa", "morocco", "egypt", "algeria", "tunisia", "south africa", "kenya", "ethiopia", "nigeria", "ghana"],
-        "asia": ["asia", "china", "japan", "india", "thailand", "vietnam", "indonesia", "malaysia", "philippines", "singapore", "taiwan", "korea", "israel", "turkey", "saudi"],
-        "north america": ["north america", "usa", "united states", "canada", "mexico", "costa rica", "cuba", "jamaica", "dominican"],
-        "south america": ["south america", "brazil", "argentina", "chile", "peru", "colombia", "ecuador", "venezuela", "bolivia"],
-        "australia": ["australia", "new zealand", "oceania"]
-      };
-
-      for (const [continent, keywords] of Object.entries(continents)) {
-        if (keywords.some(keyword => loc.includes(keyword))) {
-          return continent as ContinentKey;
-        }
-      }
-      
-      return "europe"; // Default to Europe if unknown
-    };
-
-    const sourceContinent = getContinent(normalizedSource);
-    const destContinent = getContinent(normalizedDestination);
-    
-    console.log(`Estimated travel distance from ${source} (${sourceContinent}) to ${destination} (${destContinent}): ${continentDistances[sourceContinent][destContinent]} km`);
-    
-    return continentDistances[sourceContinent][destContinent];
-  } catch (error) {
-    console.error("Error estimating distance:", error);
-    return 5000; // Default fallback distance
-  }
 };
 
 // Get seasonal alternatives for a produce
@@ -382,23 +292,36 @@ export const analyzeProduceSustainabilityOffline = async (
 
     const userLocationString = userLocation.city || userLocation.country || "Netherlands";
     
-    // Step 1: Estimate travel distance
-    const travelDistance = await estimateDistance(sourceLocation, userLocationString);
+    // Step 1: Get user coordinates (either from the passed location or current browser location)
+    let userCoords;
+    if (userLocation.latitude && userLocation.longitude) {
+      userCoords = { lat: userLocation.latitude, lng: userLocation.longitude };
+    } else {
+      userCoords = await getUserLocationCoordinates();
+    }
     
-    // Step 2: Calculate CO2 impact
+    // Step 2: Calculate real travel distance using Google Maps
+    toast({
+      title: "Calculating distance",
+      description: `Determining travel distance from ${sourceLocation} to your location...`,
+    });
+    
+    const travelDistance = await calculateDistance(sourceLocation, userCoords);
+    
+    // Step 3: Calculate CO2 impact
     const co2Impact = distanceToEmissions(travelDistance);
     
-    // Step 3: Get ripening method
-    const ripeningMethod = getRipeningMethod(produceName);
+    // Step 4: Get ripening method based on produce and source
+    const ripeningMethod = getRipeningMethod(produceName, sourceLocation);
     
-    // Step 4: Check if in season
+    // Step 5: Check if in season
     const currentMonth = new Date().getMonth();
     const inSeason = isInSeason(produceName, currentMonth);
     
-    // Step 5: Get seasonal alternatives
+    // Step 6: Get seasonal alternatives
     const seasonalAlternatives = getSeasonalAlternatives(produceName, currentMonth);
     
-    // Step 6: Get local alternatives
+    // Step 7: Get local alternatives
     const localAlternatives = getLocalAlternatives(produceName, userLocationString);
 
     // Create the final result object

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { ProduceInfo } from '../services/openaiService';
-import { Leaf, Route, Droplets, AlertCircle, ExternalLink } from 'lucide-react';
+import { Leaf, Route, Droplets, AlertCircle, ExternalLink, Info } from 'lucide-react';
 
 interface ResultsDisplayProps {
   data: ProduceInfo;
@@ -36,6 +36,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
             </div>
             <p className="text-2xl font-medium text-gray-900">{data.travelDistance.toLocaleString()} km</p>
             <p className="text-xs text-gray-500">From {data.source}</p>
+            <div className="flex items-center mt-1 text-xs text-gray-400">
+              <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+              <span>Distance calculated to the capital or major city</span>
+            </div>
           </div>
           
           <div className="space-y-1 p-3 bg-white/50 rounded-xl">
