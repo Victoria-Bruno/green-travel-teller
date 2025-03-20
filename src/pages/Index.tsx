@@ -1,11 +1,9 @@
-
 import React, { useState } from 'react';
 import ProduceForm from '../components/ProduceForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
 import { Leaf } from 'lucide-react';
-import { type ProduceInfo } from '../services/openaiService'; 
-import { analyzeProduceSustainability } from '../services/bertService';
+import { type ProduceInfo, analyzeProduceSustainability } from '../services/bertService';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
