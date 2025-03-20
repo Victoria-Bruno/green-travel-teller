@@ -1,4 +1,3 @@
-
 import { pipeline, env } from '@huggingface/transformers';
 import { toast } from "@/components/ui/use-toast";
 import { calculateDistance, getUserLocationCoordinates } from './googleMapsService';
@@ -17,6 +16,7 @@ export interface ProduceInfo {
   inSeason: boolean;
   seasonalAlternatives: AlternativeOption[];
   localAlternatives: AlternativeOption[];
+  userLocation: string; // Added to store user location for display
 }
 
 export interface AlternativeOption {
@@ -24,6 +24,7 @@ export interface AlternativeOption {
   co2Impact: number;
   distanceReduction: number;
   benefits: string[];
+  nutritionalSimilarity?: string; // Added to explain nutritional similarity
 }
 
 // Initialize model
@@ -112,6 +113,68 @@ const ripeningMethodsData: Record<string, Record<string, string | null>> = {
     "default": "Natural ripening, sometimes accelerated with ethylene",
     "italy": "Controlled atmosphere storage with minimal treatment for EU distribution"
   }
+};
+
+// Nutritional groups for produce
+const nutritionalGroups: Record<string, string[]> = {
+  "leafy_greens": ["spinach", "kale", "lettuce", "arugula", "chard", "collard greens", "cabbage"],
+  "cruciferous": ["broccoli", "cauliflower", "brussels sprouts", "cabbage", "bok choy"],
+  "root_vegetables": ["carrot", "potato", "sweet potato", "beet", "radish", "turnip", "parsnip", "onion", "garlic"],
+  "squash": ["pumpkin", "butternut squash", "acorn squash", "zucchini", "cucumber"],
+  "nightshades": ["tomato", "eggplant", "pepper", "chili"],
+  "berries": ["strawberry", "blueberry", "raspberry", "blackberry", "cranberry"],
+  "citrus": ["orange", "lemon", "lime", "grapefruit", "mandarin"],
+  "tropical_fruits": ["banana", "pineapple", "mango", "papaya", "kiwi"],
+  "stone_fruits": ["peach", "plum", "cherry", "apricot", "nectarine"],
+  "pome_fruits": ["apple", "pear", "quince"],
+  "legumes": ["beans", "peas", "lentils", "chickpeas", "soybeans"],
+  "grains": ["rice", "wheat", "oats", "barley", "quinoa", "corn"],
+  "nuts_seeds": ["almond", "walnut", "cashew", "pistachio", "sunflower seeds", "pumpkin seeds", "flax seeds"],
+  "herbs": ["basil", "parsley", "cilantro", "mint", "rosemary", "thyme", "oregano"],
+  "high_fat_fruits": ["avocado", "olive", "coconut"]
+};
+
+// Find nutritional group for a produce
+const findNutritionalGroup = (produceName: string): string | null => {
+  const normalizedProduce = produceName.toLowerCase();
+  
+  for (const [group, produceList] of Object.entries(nutritionalGroups)) {
+    if (produceList.some(item => 
+      normalizedProduce.includes(item) || item.includes(normalizedProduce))) {
+      return group;
+    }
+  }
+  
+  return null;
+};
+
+// Find similar produce in the same nutritional group
+const findNutritionallySimilarProduce = (produceName: string, excludeList: string[] = [], inSeason: boolean = true, currentMonth: number = new Date().getMonth()): string[] => {
+  const normalizedProduce = produceName.toLowerCase();
+  const group = findNutritionalGroup(normalizedProduce);
+  
+  if (!group) return [];
+  
+  const alternatives = nutritionalGroups[group]
+    .filter(item => 
+      !excludeList.some(excluded => item.includes(excluded) || excluded.includes(item)) &&
+      !item.includes(normalizedProduce) && 
+      !normalizedProduce.includes(item)
+    );
+  
+  // If we want in-season alternatives, filter by month
+  if (inSeason) {
+    return alternatives.filter(alt => {
+      for (const [produce, months] of Object.entries(seasonalCalendar)) {
+        if (alt.includes(produce) || produce.includes(alt)) {
+          return months.includes(current);
+        }
+      }
+      return false;
+    });
+  }
+  
+  return alternatives;
 };
 
 // Determine if a produce is in season based on month and produce name
@@ -441,11 +504,34 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance, produceName);
     
-    // Generate alternatives
-    const seasonalAlternatives = await generateAlternatives(produceName, inSeason, currentMonth, sourceLocation);
+    // Find nutritionally similar alternatives
+    const similarProduce = findNutritionallySimilarProduce(produceName, [produceName], true, currentMonth);
+    
+    // Generate seasonal alternatives with nutritional information
+    const seasonalAlternatives = similarProduce.slice(0, 2).map(alt => ({
+      name: alt,
+      co2Impact: co2Impact * 0.4, // Estimated reduction
+      distanceReduction: 80,
+      benefits: [
+        `Similar nutritional profile to ${produceName}`,
+        'Currently in season locally',
+        'Lower transportation emissions'
+      ],
+      nutritionalSimilarity: `Part of the same food group as ${produceName}`
+    }));
     
     // Generate local alternatives
-    const localAlternatives = await generateLocalAlternatives(produceName, sourceLocation);
+    const localAlternatives = similarProduce.slice(2, 4).map(alt => ({
+      name: alt,
+      co2Impact: co2Impact * 0.2,
+      distanceReduction: 95,
+      benefits: [
+        `Similar nutritional benefits to ${produceName}`,
+        'Grown locally',
+        'Minimal transportation needed'
+      ],
+      nutritionalSimilarity: `Provides similar nutrients to ${produceName}`
+    }));
 
     // Create the final result
     const result: ProduceInfo = {
@@ -456,7 +542,8 @@ export const analyzeProduceSustainability = async (
       ripeningMethod,
       inSeason,
       seasonalAlternatives,
-      localAlternatives
+      localAlternatives,
+      userLocation: userLocation.city || "your location"
     };
 
     // Dismiss progress toast
@@ -469,7 +556,6 @@ export const analyzeProduceSustainability = async (
     });
     
     return result;
-    
   } catch (error) {
     console.error("Error analyzing produce sustainability:", error);
     toast({

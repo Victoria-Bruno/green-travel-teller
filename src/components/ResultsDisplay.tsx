@@ -1,6 +1,5 @@
-
 import React from 'react';
-import type { ProduceInfo } from '../services/openaiService';
+import type { ProduceInfo } from '../services/bertService';
 import { Leaf, Route, Droplets, AlertCircle, ExternalLink, Info } from 'lucide-react';
 
 interface ResultsDisplayProps {
@@ -21,6 +20,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="glass-panel p-6">
+        <div className="text-gray-600 mb-4 text-sm">
+          Because you are located in {data.userLocation} and the {data.name} is imported from {data.source}, 
+          here are some more sustainable choices that provide similar nutritional benefits:
+        </div>
+        
         <div className="flex justify-between items-start mb-4">
           <h2 className="font-semibold text-xl text-gray-800">{data.name}</h2>
           <span className="pill-tag">
