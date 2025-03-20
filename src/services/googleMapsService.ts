@@ -51,7 +51,7 @@ const initGoogleMaps = (): Promise<void> => {
     if (!document.getElementById('google-maps-script')) {
       const script = document.createElement('script');
       script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
       script.async = true;
       script.defer = true;
       
@@ -113,8 +113,8 @@ export const calculateDistance = async (
   try {
     await initGoogleMaps();
     
-    if (!distanceMatrixService) {
-      throw new Error('Google Maps Distance Matrix service not initialized');
+    if (!googleMapsInitialized) {
+      throw new Error('Google Maps not initialized');
     }
     
     // Convert string locations to coordinates if needed
@@ -126,27 +126,18 @@ export const calculateDistance = async (
       ? await getCountryCoordinates(destination)
       : destination;
     
+    // Calculate using geometry library for direct distance
     const originLatLng = new google.maps.LatLng(originCoords.lat, originCoords.lng);
     const destinationLatLng = new google.maps.LatLng(destinationCoords.lat, destinationCoords.lng);
     
-    const response = await new Promise<google.maps.DistanceMatrixResponse>((resolve, reject) => {
-      distanceMatrixService!.getDistanceMatrix({
-        origins: [originLatLng],
-        destinations: [destinationLatLng],
-        travelMode: google.maps.TravelMode.DRIVING,
-        unitSystem: google.maps.UnitSystem.METRIC
-      }, (response, status) => {
-        if (status === google.maps.DistanceMatrixStatus.OK) {
-          resolve(response);
-        } else {
-          reject(new Error(`Distance Matrix failed: ${status}`));
-        }
-      });
-    });
+    // Use spherical geometry to calculate distance (as the crow flies)
+    const distanceInMeters = google.maps.geometry.spherical.computeDistanceBetween(
+      originLatLng,
+      destinationLatLng
+    );
     
-    // Extract distance in kilometers
-    const distance = response.rows[0].elements[0].distance.value / 1000;
-    return Math.round(distance);
+    // Convert to kilometers and round
+    return Math.round(distanceInMeters / 1000);
   } catch (error) {
     console.error('Error calculating distance:', error);
     toast({

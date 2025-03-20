@@ -5,7 +5,7 @@ import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
 import { Leaf } from 'lucide-react';
 import { type ProduceInfo } from '../services/openaiService'; 
-import { analyzeProduceSustainabilityOffline } from '../services/huggingfaceService';
+import { analyzeProduceSustainability } from '../services/bertService';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,10 +17,10 @@ const Index = () => {
     setError(null);
     
     try {
-      console.log("Analyzing produce sustainability with Hugging Face...");
+      console.log("Analyzing produce sustainability with BERT model...");
       console.log("Form data:", formData);
       
-      const data = await analyzeProduceSustainabilityOffline(
+      const data = await analyzeProduceSustainability(
         formData.produceName,
         formData.sourceLocation,
         formData.userLocation
