@@ -39,6 +39,7 @@ const capitalCache: Record<string, { lat: number; lng: number }> = {
 // Initialize Google Maps API
 let googleMapsInitialized = false;
 let distanceMatrixService: google.maps.DistanceMatrixService | null = null;
+const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const initGoogleMaps = (): Promise<void> => {
   if (googleMapsInitialized && distanceMatrixService) {
@@ -50,7 +51,7 @@ const initGoogleMaps = (): Promise<void> => {
     if (!document.getElementById('google-maps-script')) {
       const script = document.createElement('script');
       script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyA-73vtaP0DTQVNpIkCIr1TpX_9wqTalP0&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       script.defer = true;
       
