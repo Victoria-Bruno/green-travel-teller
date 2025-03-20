@@ -1,3 +1,4 @@
+
 import { pipeline, env } from '@huggingface/transformers';
 import { toast } from "@/components/ui/use-toast";
 import { calculateDistance, getUserLocationCoordinates } from './googleMapsService';
@@ -134,6 +135,31 @@ const nutritionalGroups: Record<string, string[]> = {
   "high_fat_fruits": ["avocado", "olive", "coconut"]
 };
 
+// Nutritional profiles for common foods
+const nutritionalProfiles: Record<string, string> = {
+  "banana": "High in potassium, vitamin B6, fiber and provides quick energy from natural sugars",
+  "apple": "Rich in fiber, vitamin C, and antioxidants with a moderate glycemic index",
+  "pear": "Good source of fiber, vitamin C, and natural sugars with similar energy profile to bananas",
+  "avocado": "High in healthy monounsaturated fats, fiber, potassium and various micronutrients",
+  "tomato": "Rich in lycopene, vitamin C, potassium and antioxidants with low calorie content",
+  "potato": "Good source of complex carbohydrates, potassium, vitamin C and B vitamins",
+  "carrot": "High in beta-carotene, fiber, vitamin K, and various antioxidants",
+  "broccoli": "Excellent source of vitamin C, K, folate, fiber and various phytonutrients",
+  "spinach": "High in iron, vitamin K, A, folate and various antioxidants with low calorie content",
+  "strawberry": "Rich in vitamin C, manganese, antioxidants and has a low glycemic index",
+  "oats": "High in complex carbohydrates, fiber (beta-glucans), protein and minerals",
+  "quinoa": "Complete protein source with fiber, minerals and slower energy release than bananas"
+};
+
+// Emission factors for different transportation methods (kg CO2 per kg-km)
+const emissionFactors = {
+  air_freight: 0.00025,
+  road_short: 0.00010,
+  road_long: 0.00015,
+  sea_freight: 0.00003,
+  local_transport: 0.00005
+};
+
 // Find nutritional group for a produce
 const findNutritionalGroup = (produceName: string): string | null => {
   const normalizedProduce = produceName.toLowerCase();
@@ -167,7 +193,7 @@ const findNutritionallySimilarProduce = (produceName: string, excludeList: strin
     return alternatives.filter(alt => {
       for (const [produce, months] of Object.entries(seasonalCalendar)) {
         if (alt.includes(produce) || produce.includes(alt)) {
-          return months.includes(current);
+          return months.includes(currentMonth);
         }
       }
       return false;
@@ -271,137 +297,216 @@ const determineRipeningMethod = async (produceName: string, sourceLocation: stri
 
 // Get CO2 impact based on distance and transportation methods
 const calculateCO2Impact = (distance: number, produceType: string): number => {
-  // CO2 emissions factors (kg CO2 per kg produce per km)
-  const transportEmissions = distance > 2000 
-    ? 0.00025 // Long distance/air freight 
-    : 0.00015; // Road/sea freight
+  // Determine likely transportation method based on distance and produce type
+  let emissionFactor;
+  
+  if (distance > 5000) {
+    // Long international distances, likely air freight for perishables
+    if (["berry", "strawberry", "raspberry", "avocado", "mango", "papaya", "asparagus"].some(
+      term => produceType.toLowerCase().includes(term))) {
+      emissionFactor = emissionFactors.air_freight;
+    } else {
+      // Non-perishables over long distances typically go by sea
+      emissionFactor = emissionFactors.sea_freight;
+    }
+  } else if (distance > 1000) {
+    // Medium distances by road
+    emissionFactor = emissionFactors.road_long;
+  } else {
+    // Short distances
+    emissionFactor = emissionFactors.road_short;
+  }
   
   // Additional emissions from production and refrigeration
   const productionEmissions = ["avocado", "asparagus", "berries"].some(type => 
     produceType.toLowerCase().includes(type)) ? 0.2 : 0.1;
   
   // Calculate total emissions
-  const transportTotal = distance * transportEmissions;
+  const transportTotal = distance * emissionFactor;
   const total = transportTotal + productionEmissions;
   
   // Return rounded value
   return parseFloat(total.toFixed(2));
 };
 
-// Generate sustainable alternatives
+// Generate detailed sustainable alternatives
 const generateAlternatives = async (
   produceName: string, 
-  isInSeason: boolean, 
-  currentMonth: number,
-  sourceLocation: string
+  co2Impact: number,
+  travelDistance: number,
+  sourceLocation: string,
+  userLocation: string
 ): Promise<AlternativeOption[]> => {
   try {
     const model = await loadBertModel().catch(() => null);
-    if (!model) {
-      return getDefaultAlternatives(produceName);
+    const normalizedProduce = produceName.toLowerCase();
+    const currentMonth = new Date().getMonth();
+    
+    // Find the nutritional group of the produce
+    const nutritionalGroup = findNutritionalGroup(normalizedProduce);
+    if (!nutritionalGroup) {
+      return getDefaultAlternatives(produceName, co2Impact);
     }
     
-    const normalizedProduce = produceName.toLowerCase();
+    // Find similar produces in the same nutritional group
+    let similarProduces = nutritionalGroups[nutritionalGroup]
+      .filter(item => 
+        !normalizedProduce.includes(item) && 
+        !item.includes(normalizedProduce)
+      );
     
-    // Use BERT to generate a personalized response
-    const query = `What are sustainable alternatives to ${produceName} imported from ${sourceLocation}?`;
-    const result = await model(query);
+    // Filter to in-season items first
+    const inSeasonOptions = [];
+    for (const alternative of similarProduces) {
+      // Check if alternative is in season
+      let isInSeason = false;
+      for (const [produce, months] of Object.entries(seasonalCalendar)) {
+        if ((alternative.includes(produce) || produce.includes(alternative)) && months.includes(currentMonth)) {
+          isInSeason = true;
+          break;
+        }
+      }
+      
+      if (isInSeason) {
+        inSeasonOptions.push(alternative);
+      }
+    }
     
-    // For simplicity of this implementation, we'll return predefined alternatives
-    // In a production system, you would process the model output more thoroughly
+    // Create alternatives with detailed descriptions
+    const result: AlternativeOption[] = [];
     
-    // Return default alternatives with some variance based on the model sentiment
-    const isPositive = result[0]?.label === 'POSITIVE';
-    const defaultAlts = getDefaultAlternatives(produceName);
+    // Use available in-season options first, then fall back to others
+    const optionsToUse = inSeasonOptions.length > 0 ? inSeasonOptions : similarProduces;
     
-    // Slightly adjust CO2 impact based on model sentiment (for demonstration)
-    return defaultAlts.map(alt => ({
-      ...alt,
-      co2Impact: isPositive ? Math.max(0.05, alt.co2Impact - 0.05) : alt.co2Impact
-    }));
+    // Limit to max 3 alternatives
+    for (let i = 0; i < Math.min(3, optionsToUse.length); i++) {
+      const alternative = optionsToUse[i];
+      
+      // Calculate approximate distance reduction (local growing assumed)
+      const distanceReduction = Math.min(95, Math.round((travelDistance - 500) / travelDistance * 100));
+      if (distanceReduction < 30) continue; // Skip if not significantly better
+      
+      // Calculate reduced CO2 impact
+      const reducedCO2 = calculateCO2Impact(500, alternative); // Assume 500km local transport
+      
+      // Get nutritional information if available
+      const nutritionalInfo = nutritionalProfiles[alternative] || 
+        `Similar nutritional profile to other ${nutritionalGroup.replace('_', ' ')}`;
+      
+      // Generate benefits based on actual data
+      const benefits = [
+        nutritionalInfo,
+        `Grown locally in or near ${userLocation}, reducing transportation emissions`,
+        `${distanceReduction}% less distance compared to ${produceName} from ${sourceLocation}`
+      ];
+      
+      result.push({
+        name: alternative,
+        co2Impact: reducedCO2,
+        distanceReduction,
+        benefits
+      });
+    }
+    
+    // If we couldn't find enough alternatives, add generic ones
+    if (result.length < 3) {
+      const defaultAlternatives = getDefaultAlternatives(produceName, co2Impact)
+        .slice(0, 3 - result.length);
+      
+      result.push(...defaultAlternatives);
+    }
+    
+    return result;
   } catch (error) {
     console.error('Error generating alternatives:', error);
-    return getDefaultAlternatives(produceName);
+    return getDefaultAlternatives(produceName, co2Impact);
   }
 };
 
 // Get default alternatives for a produce
-const getDefaultAlternatives = (produceName: string): AlternativeOption[] => {
-  // Basic alternatives database
-  const commonAlternatives: Record<string, AlternativeOption[]> = {
-    "avocado": [
+const getDefaultAlternatives = (produceName: string, co2Impact: number): AlternativeOption[] => {
+  const nutritionalGroup = findNutritionalGroup(produceName.toLowerCase());
+  const groupName = nutritionalGroup ? nutritionalGroup.replace('_', ' ') : 'produce';
+  
+  // More specific alternatives based on nutritional groups
+  if (nutritionalGroup === 'tropical_fruits') {
+    return [
       {
-        name: "Hummus",
-        co2Impact: 0.2,
-        distanceReduction: 80,
-        benefits: ["Plant-based spread with similar uses", "Can be made locally", "Lower water footprint"]
+        name: "Local apples or pears",
+        co2Impact: co2Impact * 0.3,
+        distanceReduction: 85,
+        benefits: [
+          "Provide fiber, vitamin C, and natural sugars for energy",
+          "Grown throughout Europe with minimal transportation needed",
+          "Available nearly year-round from cold storage"
+        ]
       },
       {
-        name: "Nut butter",
-        co2Impact: 0.3,
-        distanceReduction: 70,
-        benefits: ["Rich in healthy fats", "Long shelf life", "Available locally"]
-      }
-    ],
-    "tomato": [
-      {
-        name: "Local seasonal vegetables",
-        co2Impact: 0.1,
+        name: "Seasonal berries",
+        co2Impact: co2Impact * 0.2,
         distanceReduction: 90,
-        benefits: ["Significantly lower transportation impact", "Fresher and more nutritious", "Supports local agriculture"]
+        benefits: [
+          "Rich in antioxidants, vitamins and fiber",
+          "Can be grown locally during summer months",
+          "Frozen options available year-round with lower carbon footprint"
+        ]
       },
       {
-        name: "Preserved tomatoes",
-        co2Impact: 0.3,
-        distanceReduction: 60,
-        benefits: ["Processed during peak season", "Lower food waste", "Year-round availability"]
-      }
-    ],
-    "berries": [
-      {
-        name: "Local fruits in season",
-        co2Impact: 0.1,
+        name: "Oats or other grains",
+        co2Impact: co2Impact * 0.1,
         distanceReduction: 95,
-        benefits: ["Minimal transportation", "Peak flavor and nutrition", "Support local farming"]
+        benefits: [
+          "Provide complex carbohydrates and sustained energy",
+          "Grown extensively throughout Europe",
+          "Excellent shelf-life reducing food waste"
+        ]
+      }
+    ];
+  } else if (nutritionalGroup === 'high_fat_fruits') {
+    return [
+      {
+        name: "Locally grown nuts",
+        co2Impact: co2Impact * 0.4,
+        distanceReduction: 80,
+        benefits: [
+          "Rich in healthy fats similar to avocados",
+          "Longer shelf life reducing food waste",
+          "Can be grown in many European regions"
+        ]
       },
       {
-        name: "Frozen local berries",
-        co2Impact: 0.2,
-        distanceReduction: 80,
-        benefits: ["Preserved at peak ripeness", "Available year-round", "Reduces food waste"]
+        name: "Seeds (sunflower, pumpkin)",
+        co2Impact: co2Impact * 0.3,
+        distanceReduction: 85,
+        benefits: [
+          "Excellent source of healthy fats and protein",
+          "Grown throughout Europe with lower water requirements",
+          "Can be used in many similar culinary applications"
+        ]
       }
-    ]
-  };
-
-  const normalizedProduce = produceName.toLowerCase();
-  
-  // Check if we have pre-defined alternatives
-  for (const [key, alternatives] of Object.entries(commonAlternatives)) {
-    if (normalizedProduce.includes(key) || key.includes(normalizedProduce)) {
-      return alternatives;
-    }
+    ];
   }
-  
-  // If no specific alternatives found, create generic ones
+
+  // Generic alternatives when specific ones aren't available
   return [
     {
-      name: `Local seasonal produce`,
-      co2Impact: 0.1,
-      distanceReduction: 90,
+      name: `Local seasonal ${groupName}`,
+      co2Impact: co2Impact * 0.3,
+      distanceReduction: 85,
       benefits: [
-        "Significantly lower carbon footprint",
+        "Significantly lower carbon footprint due to reduced transportation",
         "Fresher product with better taste and nutrition",
-        "Supports local economy"
+        "Supports local economy and farming practices"
       ]
     },
     {
       name: "Plant-based seasonal alternatives",
-      co2Impact: 0.2,
-      distanceReduction: 80,
+      co2Impact: co2Impact * 0.2,
+      distanceReduction: 90,
       benefits: [
-        "Adapted to local growing conditions",
-        "Lower resource requirements",
-        "Reduced transportation emissions"
+        "Adapted to local growing conditions requiring fewer resources",
+        "Similar nutritional profile with lower environmental impact",
+        "Reduced transportation emissions compared to imported produce"
       ]
     }
   ];
@@ -410,57 +515,73 @@ const getDefaultAlternatives = (produceName: string): AlternativeOption[] => {
 // Generate local alternatives
 const generateLocalAlternatives = async (
   produceName: string,
-  sourceLocation: string
+  co2Impact: number,
+  sourceLocation: string,
+  userLocation: string
 ): Promise<AlternativeOption[]> => {
   try {
-    const model = await loadBertModel().catch(() => null);
-    if (!model) {
-      return getDefaultLocalAlternatives(produceName);
-    }
+    // Local options are more focused on cultivation methods rather than different produce
+    // Find the nutritional group to provide context
+    const nutritionalGroup = findNutritionalGroup(produceName.toLowerCase());
+    const groupName = nutritionalGroup ? nutritionalGroup.replace('_', ' ') : 'produce';
     
-    // Use BERT to get sentiment about local alternatives
-    const query = `What are local alternatives to ${produceName} in the Netherlands?`;
-    const result = await model(query);
-    
-    // For simplicity, return predefined alternatives with slight variations
-    const isPositive = result[0]?.label === 'POSITIVE';
-    const defaultAlts = getDefaultLocalAlternatives(produceName);
-    
-    // Adjust distance reduction based on model sentiment
-    return defaultAlts.map(alt => ({
-      ...alt,
-      distanceReduction: isPositive ? Math.min(99, alt.distanceReduction + 5) : alt.distanceReduction
-    }));
+    return [
+      {
+        name: `Locally grown ${produceName}`,
+        co2Impact: co2Impact * 0.2,
+        distanceReduction: 95,
+        benefits: [
+          "Same nutritional profile as imported version",
+          `Grown within or near ${userLocation} reducing transportation emissions by up to 95%`,
+          "Harvested at peak ripeness for maximum flavor and nutrition"
+        ]
+      },
+      {
+        name: "Community garden options",
+        co2Impact: co2Impact * 0.05,
+        distanceReduction: 99,
+        benefits: [
+          "Zero food miles with minimal carbon footprint",
+          "Complete transparency in growing methods",
+          "Promotes food sovereignty and community resilience"
+        ]
+      },
+      {
+        name: "Indoor/vertical farm produce",
+        co2Impact: co2Impact * 0.3,
+        distanceReduction: 90,
+        benefits: [
+          "Year-round local production regardless of climate",
+          "Typically uses less water and no pesticides",
+          "Can be grown in urban areas very close to consumers"
+        ]
+      }
+    ].slice(0, 3); // Limit to max 3 alternatives
   } catch (error) {
     console.error('Error generating local alternatives:', error);
-    return getDefaultLocalAlternatives(produceName);
+    return [
+      {
+        name: `Local ${produceName}`,
+        co2Impact: co2Impact * 0.2,
+        distanceReduction: 95,
+        benefits: [
+          "Minimal transportation emissions",
+          "Fresher product with higher nutritional value",
+          "Supports local farmers and economy"
+        ]
+      },
+      {
+        name: "Community garden produce",
+        co2Impact: co2Impact * 0.05,
+        distanceReduction: 99,
+        benefits: [
+          "Zero transportation footprint",
+          "Know exactly how your food is grown",
+          "Promotes food sovereignty and self-sufficiency"
+        ]
+      }
+    ];
   }
-};
-
-// Get default local alternatives
-const getDefaultLocalAlternatives = (produceName: string): AlternativeOption[] => {
-  return [
-    {
-      name: `Local ${produceName}`,
-      co2Impact: 0.1,
-      distanceReduction: 95,
-      benefits: [
-        "Minimal transportation emissions",
-        "Fresher product with higher nutritional value",
-        "Supports local farmers and economy"
-      ]
-    },
-    {
-      name: "Community garden produce",
-      co2Impact: 0.05,
-      distanceReduction: 99,
-      benefits: [
-        "Zero transportation footprint",
-        "Know exactly how your food is grown",
-        "Promotes food sovereignty and self-sufficiency"
-      ]
-    }
-  ];
 };
 
 // Main analysis function
@@ -504,34 +625,23 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance, produceName);
     
-    // Find nutritionally similar alternatives
-    const similarProduce = findNutritionallySimilarProduce(produceName, [produceName], true, currentMonth);
-    
-    // Generate seasonal alternatives with nutritional information
-    const seasonalAlternatives = similarProduce.slice(0, 2).map(alt => ({
-      name: alt,
-      co2Impact: co2Impact * 0.4, // Estimated reduction
-      distanceReduction: 80,
-      benefits: [
-        `Similar nutritional profile to ${produceName}`,
-        'Currently in season locally',
-        'Lower transportation emissions'
-      ],
-      nutritionalSimilarity: `Part of the same food group as ${produceName}`
-    }));
+    // Generate better seasonal alternatives with nutritional information
+    const userLocationString = userLocation.city || "your location";
+    const seasonalAlternatives = await generateAlternatives(
+      produceName, 
+      co2Impact, 
+      travelDistance, 
+      sourceLocation, 
+      userLocationString
+    );
     
     // Generate local alternatives
-    const localAlternatives = similarProduce.slice(2, 4).map(alt => ({
-      name: alt,
-      co2Impact: co2Impact * 0.2,
-      distanceReduction: 95,
-      benefits: [
-        `Similar nutritional benefits to ${produceName}`,
-        'Grown locally',
-        'Minimal transportation needed'
-      ],
-      nutritionalSimilarity: `Provides similar nutrients to ${produceName}`
-    }));
+    const localAlternatives = await generateLocalAlternatives(
+      produceName, 
+      co2Impact, 
+      sourceLocation,
+      userLocationString
+    );
 
     // Create the final result
     const result: ProduceInfo = {
@@ -543,7 +653,7 @@ export const analyzeProduceSustainability = async (
       inSeason,
       seasonalAlternatives,
       localAlternatives,
-      userLocation: userLocation.city || "your location"
+      userLocation: userLocationString
     };
 
     // Dismiss progress toast
