@@ -29,6 +29,11 @@ export function useGeolocation() {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
       );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch location data: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       return {
@@ -67,11 +72,32 @@ export function useGeolocation() {
         });
       },
       error => {
+        console.error('Geolocation error:', error);
+        let errorMessage = 'Unable to determine your location';
+        
+        // Provide more specific error messages
+        switch(error.code) {
+          case 1: // PERMISSION_DENIED
+            errorMessage = 'Location access denied. Please enable location services in your browser settings';
+            break;
+          case 2: // POSITION_UNAVAILABLE
+            errorMessage = 'Your location information is unavailable';
+            break;
+          case 3: // TIMEOUT
+            errorMessage = 'Location request timed out';
+            break;
+        }
+        
         setState(prev => ({
           ...prev,
           loading: false,
-          error: error.message,
+          error: errorMessage,
         }));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   }, []);

@@ -74,7 +74,6 @@ const initGoogleMaps = (): Promise<void> => {
   });
 };
 
-// Get coordinates for a country name
 const getCountryCoordinates = async (countryName: string): Promise<{ lat: number; lng: number }> => {
   const normalizedCountry = countryName.toLowerCase().trim();
   
@@ -104,7 +103,6 @@ const getCountryCoordinates = async (countryName: string): Promise<{ lat: number
   });
 };
 
-// Calculate distance between two locations using Google Maps Distance Matrix API
 export const calculateDistance = async (
   origin: { lat: number; lng: number } | string,
   destination: { lat: number; lng: number } | string
@@ -155,7 +153,6 @@ export const calculateDistance = async (
   }
 };
 
-// Haversine formula for calculating distance between two points on a sphere
 const calculateHaversineDistance = (
   origin: { lat: number; lng: number },
   destination: { lat: number; lng: number }
@@ -179,7 +176,6 @@ const degreesToRadians = (degrees: number): number => {
   return degrees * (Math.PI/180);
 };
 
-// Get user's current location coordinates
 export const getUserLocationCoordinates = async (): Promise<{ lat: number; lng: number }> => {
   return new Promise((resolve, reject) => {
     if (navigator.geolocation) {
@@ -192,14 +188,12 @@ export const getUserLocationCoordinates = async (): Promise<{ lat: number; lng: 
         },
         error => {
           console.error('Geolocation error:', error);
-          // Default to Netherlands
-          resolve({ lat: 52.3676, lng: 4.9041 });
+          reject(new Error('Unable to determine your location. Please enter your location manually.'));
         }
       );
     } else {
       console.error('Geolocation not supported');
-      // Default to Netherlands
-      resolve({ lat: 52.3676, lng: 4.9041 });
+      reject(new Error('Geolocation is not supported by your browser. Please enter your location manually.'));
     }
   });
 };
