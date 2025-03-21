@@ -51,10 +51,10 @@ const loadBertModel = async () => {
       description: "This may take a moment...",
     });
     
-    // Use a more reliable model - a simple text classification model
+    // Use a more reliable model for classification
     bertModel = await pipeline(
       'text-classification',
-      'Xenova/distilbert-base-uncased-finetuned-sst-2-english' // More likely to be available
+      'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
     );
     
     isModelLoading = false;
@@ -71,6 +71,7 @@ const loadBertModel = async () => {
     // If we can't load the model, create a simple mock model for fallback
     bertModel = {
       async __call__(text: string) {
+        console.log("Using fallback model with query:", text);
         // Simple fallback - return positive for questions about sustainability
         if (text.toLowerCase().includes('sustainable') || 
             text.toLowerCase().includes('local') || 
@@ -85,24 +86,57 @@ const loadBertModel = async () => {
   }
 };
 
-// Basic food groups to help with similarity matching
+// Comprehensive food groups with nutritional information
 const foodGroups = {
-  fruits: ['apple', 'banana', 'orange', 'grape', 'strawberry', 'blueberry', 'raspberry', 'blackberry', 
-    'pear', 'peach', 'plum', 'kiwi', 'mango', 'pineapple', 'watermelon', 'melon', 'apricot', 'cherry',
-    'avocado', 'fig', 'date', 'papaya', 'guava', 'pomegranate', 'lychee'],
-  
-  vegetables: ['broccoli', 'cauliflower', 'carrot', 'potato', 'tomato', 'onion', 'garlic', 'pepper',
-    'spinach', 'kale', 'lettuce', 'cabbage', 'celery', 'cucumber', 'zucchini', 'eggplant', 'corn',
-    'asparagus', 'beet', 'radish', 'turnip', 'squash', 'pumpkin', 'sweet potato', 'brussels sprout'],
-  
-  grains: ['rice', 'wheat', 'oats', 'barley', 'quinoa', 'corn', 'rye', 'millet', 'buckwheat',
-    'bread', 'pasta', 'cereal', 'flour', 'couscous', 'bulgur'],
-  
-  protein: ['chicken', 'beef', 'pork', 'lamb', 'fish', 'tofu', 'tempeh', 'beans', 'lentils', 'chickpeas',
-    'nuts', 'seeds', 'eggs', 'yogurt', 'cheese', 'milk', 'soy'],
-  
-  nuts_seeds: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'peanut', 'sunflower seed',
-    'pumpkin seed', 'chia seed', 'flax seed', 'hemp seed', 'sesame seed'],
+  fruits: {
+    items: ['apple', 'banana', 'orange', 'grape', 'strawberry', 'blueberry', 'raspberry', 
+      'pear', 'peach', 'plum', 'kiwi', 'mango', 'pineapple', 'watermelon', 'melon', 
+      'apricot', 'cherry', 'avocado', 'fig', 'date', 'papaya', 'guava', 'pomegranate'],
+    nutrition: 'vitamins, natural sugars, fiber, antioxidants',
+    benefits: 'rich in vitamins, natural sugars for energy, antioxidants'
+  },
+  berries: {
+    items: ['strawberry', 'blueberry', 'raspberry', 'blackberry', 'cranberry', 'acai'],
+    nutrition: 'vitamin C, antioxidants, fiber, low sugar',
+    benefits: 'rich in antioxidants, low sugar, anti-inflammatory properties'
+  },
+  tropical_fruits: {
+    items: ['banana', 'mango', 'pineapple', 'papaya', 'avocado', 'coconut', 'guava', 'kiwi'],
+    nutrition: 'vitamins A & C, potassium, fiber, exotic nutrients',
+    benefits: 'high in potassium, tropical nutrients, good for digestion'
+  },
+  leafy_vegetables: {
+    items: ['spinach', 'kale', 'lettuce', 'cabbage', 'arugula', 'chard', 'collard greens'],
+    nutrition: 'iron, folate, vitamin K, fiber, low calorie',
+    benefits: 'very low calorie, high in iron and folate, excellent for heart health'
+  },
+  root_vegetables: {
+    items: ['carrot', 'potato', 'sweet potato', 'beet', 'radish', 'turnip', 'onion', 'garlic'],
+    nutrition: 'complex carbs, fiber, minerals, antioxidants',
+    benefits: 'high in complex carbohydrates, good for energy, rich in minerals'
+  },
+  vegetables: {
+    items: ['broccoli', 'cauliflower', 'tomato', 'pepper', 'cucumber', 'zucchini', 'eggplant', 
+      'corn', 'asparagus', 'brussels sprout', 'celery'],
+    nutrition: 'vitamins, fiber, phytonutrients, low calorie',
+    benefits: 'low in calories, high in nutrients, excellent fiber content'
+  },
+  grains: {
+    items: ['rice', 'wheat', 'oats', 'barley', 'quinoa', 'rye', 'millet', 'buckwheat'],
+    nutrition: 'complex carbs, fiber, B vitamins, some protein',
+    benefits: 'high in complex carbohydrates, sustainable energy source, filling'
+  },
+  legumes: {
+    items: ['beans', 'lentils', 'chickpeas', 'peas', 'soybeans', 'peanuts'],
+    nutrition: 'protein, fiber, iron, folate, complex carbs',
+    benefits: 'excellent plant protein source, high in fiber, iron and folate'
+  },
+  nuts_seeds: {
+    items: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'peanut', 
+      'sunflower seed', 'pumpkin seed', 'chia seed', 'flax seed', 'hemp seed', 'sesame seed'],
+    nutrition: 'healthy fats, protein, vitamin E, minerals',
+    benefits: 'rich in healthy fats, good protein source, contain various minerals'
+  }
 };
 
 // Get month name from number
@@ -115,12 +149,16 @@ const getMonthName = (month: number): string => {
 };
 
 // Find the food group for a given produce
-const findFoodGroup = (produceName: string): string | null => {
+const findFoodGroupInfo = (produceName: string): { group: string, nutrition: string, items: string[] } | null => {
   const normalizedName = produceName.toLowerCase();
   
-  for (const [group, items] of Object.entries(foodGroups)) {
-    if (items.some(item => normalizedName.includes(item) || item.includes(normalizedName))) {
-      return group;
+  for (const [group, info] of Object.entries(foodGroups)) {
+    if (info.items.some(item => normalizedName.includes(item) || item.includes(normalizedName))) {
+      return { 
+        group, 
+        nutrition: info.nutrition,
+        items: info.items
+      };
     }
   }
   
@@ -138,7 +176,9 @@ const determineIfInSeason = async (produceName: string, userLocation: string): P
     
     // Dynamic query with user's location
     const query = `Is ${produceName} in season in ${userLocation} during ${monthName}?`;
+    console.log("Season query:", query);
     const result = await model(query);
+    console.log("Season result:", result);
     
     return result[0]?.label === 'POSITIVE';
   } catch (error) {
@@ -154,8 +194,10 @@ const determineRipeningMethod = async (produceName: string, sourceLocation: stri
     if (!model) return null;
     
     // Dynamic query with user's location
-    const query = `Does ${produceName} imported from ${sourceLocation} to ${userLocation} use artificial ripening methods?`;
+    const query = `Does ${produceName} imported from ${sourceLocation} to ${userLocation} typically use artificial ripening methods?`;
+    console.log("Ripening query:", query);
     const result = await model(query);
+    console.log("Ripening result:", result);
     
     if (result[0]?.label === 'POSITIVE') {
       return `Likely uses post-harvest ripening techniques when imported from ${sourceLocation} to ${userLocation}`;
@@ -211,7 +253,7 @@ const calculateCO2Impact = (distance: number, produceType: string): number => {
   return parseFloat(total.toFixed(2));
 };
 
-// Generate alternatives using feature-based similarity approach
+// Generate nutritionally similar, more sustainable alternatives
 const generateAlternatives = async (
   produceName: string,
   co2Impact: number,
@@ -220,15 +262,17 @@ const generateAlternatives = async (
   userLocation: string
 ): Promise<AlternativeOption[]> => {
   try {
-    const model = await loadBertModel().catch(() => null);
-    if (!model) {
-      console.error('Failed to load model for alternatives');
-      
-      // Provide at least one fallback alternative even if model fails
+    // Identify food group and nutritional profile of the produce
+    const foodGroupInfo = findFoodGroupInfo(produceName);
+    console.log("Food group info:", foodGroupInfo);
+    
+    // If we can't identify the food group, use a basic fallback
+    if (!foodGroupInfo) {
       return [{
-        name: "Local seasonal produce",
+        name: `Local seasonal produce`,
         co2Impact: co2Impact * 0.3,
         distanceReduction: 80,
+        nutritionalSimilarity: "Similar nutritional profile",
         benefits: [
           "Lower carbon footprint from reduced transportation",
           "Supports local farmers and economy",
@@ -237,105 +281,150 @@ const generateAlternatives = async (
       }];
     }
     
-    // Identify food group of the produce
-    const foodGroup = findFoodGroup(produceName) || "produce";
+    // Generate more specific alternatives based on the food group
+    const alternatives: AlternativeOption[] = [];
+    const { group, nutrition, items } = foodGroupInfo;
     
-    // Create a specific, detailed prompt for better results
-    const prompt = `What are 3 more sustainable alternatives to ${produceName} imported from ${sourceLocation} to ${userLocation} in terms of nutritional groups, value and emission? Consider local options that provide similar nutritional benefits but with lower carbon footprint.`;
+    // Find items from the same food group that are different from the original produce
+    const similarItems = items.filter(item => 
+      !produceName.toLowerCase().includes(item) && 
+      !item.includes(produceName.toLowerCase())
+    );
     
-    // Get model's response
-    const result = await model(prompt);
+    console.log("Potential similar items:", similarItems);
     
-    // If model suggests alternatives are available
-    if (result[0]?.label === 'POSITIVE') {
-      const alternatives: AlternativeOption[] = [];
+    // Create location-specific alternatives based on food group
+    if (group === 'tropical_fruits') {
+      // For tropical fruits like bananas, suggest local temperate fruits
+      alternatives.push({
+        name: `Local apples or pears`,
+        co2Impact: co2Impact * 0.2,
+        distanceReduction: 90,
+        nutritionalSimilarity: "Good source of fiber and natural sugars",
+        benefits: [
+          "Grown locally in many temperate regions",
+          "Much lower emissions from minimal transportation",
+          "Still provides dietary fiber and natural sugars"
+        ]
+      });
       
-      // Add potential alternatives based on food group
-      const potentialAlternatives = [
-        {
-          name: `Local ${foodGroup} (${userLocation} region)`,
-          co2Impact: co2Impact * 0.2,
-          distanceReduction: 90,
-          benefits: [
-            `Similar nutritional profile to ${produceName}`,
-            `Grown within the ${userLocation} region, drastically reducing transportation emissions`,
-            "Fresher with potentially higher nutrient content due to shorter time from harvest to consumption"
-          ]
-        },
-        {
-          name: `Seasonal ${foodGroup} varieties`,
-          co2Impact: co2Impact * 0.3,
-          distanceReduction: 85,
-          benefits: [
-            "Optimally grown without artificial conditions, reducing energy use",
-            "Higher nutrient density when harvested in proper season",
-            "Lower environmental impact due to reduced need for artificial growing conditions"
-          ]
-        }
-      ];
+      // Suggest berries as an alternative with higher nutrition density
+      alternatives.push({
+        name: `Seasonal berries`,
+        co2Impact: co2Impact * 0.25,
+        distanceReduction: 85,
+        nutritionalSimilarity: "Higher in antioxidants than tropical fruits",
+        benefits: [
+          "Provides similar vitamins with added antioxidant benefits",
+          "Can be locally grown or sourced from nearby regions",
+          "More nutrient-dense per calorie than most tropical fruits"
+        ]
+      });
       
-      // Add fruit-specific alternatives for fruits
-      if (foodGroup === 'fruits') {
-        potentialAlternatives.push({
-          name: `Regional berries and stone fruits`,
-          co2Impact: co2Impact * 0.25,
-          distanceReduction: 88,
-          benefits: [
-            `Similar vitamin and antioxidant profile to ${produceName}`,
-            "Typically grown with lower water requirements than tropical fruits",
-            "Can provide similar nutritional benefits with significantly lower transportation emissions"
-          ]
-        });
-      }
+      // Suggest grains/oats alternative for energy content
+      alternatives.push({
+        name: `Locally grown oats or grains`,
+        co2Impact: co2Impact * 0.15,
+        distanceReduction: 92,
+        nutritionalSimilarity: "Similar energy content with added protein",
+        benefits: [
+          "Provides sustainable energy like fruits, but with more protein",
+          "Can be grown in almost any climate with low emissions",
+          "Longer shelf life reduces food waste"
+        ]
+      });
+    } 
+    else if (group === 'fruits') {
+      // For non-tropical fruits, suggest local seasonal varieties
+      alternatives.push({
+        name: `Seasonal ${similarItems.slice(0, 2).join(' or ')}`,
+        co2Impact: co2Impact * 0.3,
+        distanceReduction: 80,
+        nutritionalSimilarity: "Similar vitamin and fiber profile",
+        benefits: [
+          "In-season fruits have optimal nutrient content",
+          "Grown within your region reducing transportation emissions",
+          "Supports seasonal eating patterns"
+        ]
+      });
       
-      // Add vegetable-specific alternatives for vegetables
-      if (foodGroup === 'vegetables') {
-        potentialAlternatives.push({
-          name: `Local leafy greens and root vegetables`,
-          co2Impact: co2Impact * 0.2,
-          distanceReduction: 92,
-          benefits: [
-            "Rich in vitamins, minerals and fiber",
-            "Can be grown year-round in many climates, including indoor farming",
-            "Often require less water and pesticides than imported produce"
-          ]
-        });
-      }
+      // Add berries as high-nutrition alternative
+      alternatives.push({
+        name: `Local berries when in season`,
+        co2Impact: co2Impact * 0.25,
+        distanceReduction: 85,
+        nutritionalSimilarity: "Higher in antioxidants and lower in sugar",
+        benefits: [
+          "More nutrient-dense than most fruits",
+          "Lower sugar content but rich in vitamins",
+          "When locally sourced, minimal transportation emissions"
+        ]
+      });
+    }
+    else if (group === 'vegetables') {
+      // For vegetables, suggest local seasonal varieties
+      alternatives.push({
+        name: `Seasonal ${similarItems.slice(0, 2).join(' or ')}`,
+        co2Impact: co2Impact * 0.2,
+        distanceReduction: 90,
+        nutritionalSimilarity: "Similar vegetable nutrient profile",
+        benefits: [
+          "Locally grown vegetables have minimal transportation emissions",
+          "Seasonal varieties require less energy for production",
+          "Fresh harvest means higher vitamin content"
+        ]
+      });
       
-      // Only return up to 3 alternatives
-      return potentialAlternatives.slice(0, 3);
+      // Add leafy greens as nutrient-dense alternative
+      alternatives.push({
+        name: `Local leafy greens`,
+        co2Impact: co2Impact * 0.15,
+        distanceReduction: 95,
+        nutritionalSimilarity: "Higher in certain nutrients and lower in calories",
+        benefits: [
+          "More nutrient-dense than many vegetables",
+          "Can often be grown year-round in greenhouses with minimal heating",
+          "Very low carbon footprint when locally sourced"
+        ]
+      });
+    }
+    else {
+      // Generic alternative based on food group
+      alternatives.push({
+        name: `Local ${group.replace('_', ' ')}`,
+        co2Impact: co2Impact * 0.3,
+        distanceReduction: 85,
+        nutritionalSimilarity: `Similar ${nutrition}`,
+        benefits: [
+          `Provides comparable ${nutrition}`,
+          "Significantly lower transportation emissions",
+          "Often fresher with potentially higher nutrient content"
+        ]
+      });
     }
     
-    // If model doesn't suggest alternatives, return a generic one
-    return [{
-      name: `Local ${foodGroup} options`,
-      co2Impact: co2Impact * 0.3,
-      distanceReduction: 75,
-      benefits: [
-        "Reduced carbon footprint from transportation",
-        "Support for local agriculture",
-        "Generally fresher with less time in storage"
-      ]
-    }];
+    console.log("Generated alternatives:", alternatives);
     
+    // Make sure we have at least one alternative but no more than 3
+    return alternatives.slice(0, 3);
   } catch (error) {
     console.error('Error generating alternatives:', error);
     
-    // Return a simple fallback alternative in case of errors
+    // Ensure we return at least one fallback alternative
     return [{
-      name: "Local produce alternatives",
+      name: "Local seasonal produce",
       co2Impact: co2Impact * 0.4,
-      distanceReduction: 70,
+      distanceReduction: 75,
       benefits: [
-        "Reduced emissions from shorter transportation",
-        "Generally fresher produce",
-        "Supports local economy"
+        "Reduced transportation emissions",
+        "Generally fresher with higher nutritional value",
+        "Supports local food systems"
       ]
     }];
   }
 };
 
-// Generate local alternatives focusing on cultivation methods
+// Generate local and high-efficiency alternatives
 const generateLocalAlternatives = async (
   produceName: string,
   co2Impact: number,
@@ -343,67 +432,93 @@ const generateLocalAlternatives = async (
   userLocation: string
 ): Promise<AlternativeOption[]> => {
   try {
+    // Get food group information
+    const foodGroupInfo = findFoodGroupInfo(produceName);
+    
     const model = await loadBertModel().catch(() => null);
-    if (!model) {
-      console.error('Failed to load model for local alternatives');
-      
-      // Return at least one fallback alternative even without model
-      return [{
-        name: `Locally grown ${produceName}`,
-        co2Impact: co2Impact * 0.2,
-        distanceReduction: 90,
-        benefits: [
-          "Significantly reduced transportation emissions",
-          "Same nutritional profile as imported version",
-          "Supports local farmers and economy"
-        ]
-      }];
-    }
-    
-    const prompt = `Can ${produceName} be grown locally in ${userLocation} instead of importing from ${sourceLocation}?`;
-    const result = await model(prompt);
-    
     const alternatives: AlternativeOption[] = [];
     
-    // If BERT suggests local cultivation is possible
-    if (result[0]?.label === 'POSITIVE') {
-      // Add locally grown version of the same produce
+    // Check if the same produce could be grown locally
+    if (model) {
+      const query = `Can ${produceName} be grown locally in ${userLocation} instead of importing from ${sourceLocation}?`;
+      console.log("Local cultivation query:", query);
+      const result = await model(query);
+      console.log("Local cultivation result:", result);
+      
+      // If local cultivation is possible
+      if (result[0]?.label === 'POSITIVE') {
+        alternatives.push({
+          name: `Locally grown ${produceName}`,
+          co2Impact: co2Impact * 0.2,
+          distanceReduction: 90,
+          nutritionalSimilarity: "Identical nutritional profile",
+          benefits: [
+            "Same food with dramatically lower transportation emissions",
+            "Fresher with potentially higher vitamin content",
+            "Supports local agriculture and food security"
+          ]
+        });
+      }
+    }
+    
+    // If we have food group info, suggest efficient local alternatives
+    if (foodGroupInfo) {
+      // For plant foods, suggest gardening options
       alternatives.push({
-        name: `Locally grown ${produceName}`,
-        co2Impact: co2Impact * 0.2,
-        distanceReduction: 90,
+        name: "Home or community garden options",
+        co2Impact: co2Impact * 0.05,
+        distanceReduction: 99,
+        nutritionalSimilarity: "Can be nutritionally equivalent or superior",
         benefits: [
-          "Same nutritional profile as imported version",
-          `Grown within or near ${userLocation} reducing transportation emissions`,
-          "Harvested at peak ripeness for maximum flavor and nutrition"
+          "Zero food miles with minimal carbon footprint",
+          "Maximum freshness and nutrition",
+          "Promotes self-sufficiency and food literacy"
         ]
       });
       
-      // Add community garden option
+      // Suggest a different food group with similar nutrition but higher efficiency
+      if (['tropical_fruits', 'fruits'].includes(foodGroupInfo.group)) {
+        alternatives.push({
+          name: "Local vegetables with similar vitamins",
+          co2Impact: co2Impact * 0.2,
+          distanceReduction: 90,
+          nutritionalSimilarity: "Different food group but similar key nutrients",
+          benefits: [
+            "Local vegetables often provide similar vitamins with lower emissions",
+            "Generally require less resources to grow than fruits",
+            "Year-round availability in many regions"
+          ]
+        });
+      } 
+      else if (foodGroupInfo.group === 'vegetables') {
+        alternatives.push({
+          name: "Local legumes or grains",
+          co2Impact: co2Impact * 0.15,
+          distanceReduction: 90,
+          nutritionalSimilarity: "Different profile with more protein and fiber",
+          benefits: [
+            "Excellent shelf-stable alternatives to fresh produce",
+            "Higher protein content than vegetables",
+            "Can be stored without refrigeration, reducing energy use"
+          ]
+        });
+      }
+    } 
+    else {
+      // Generic local alternative if we couldn't determine food group
       alternatives.push({
-        name: "Community garden options",
-        co2Impact: co2Impact * 0.05,
-        distanceReduction: 99,
-        benefits: [
-          "Zero food miles with minimal carbon footprint",
-          "Complete transparency in growing methods",
-          "Promotes food sovereignty and community resilience"
-        ]
-      });
-    } else {
-      // If local growing isn't possible, suggest alternatives
-      const foodGroup = findFoodGroup(produceName) || "produce";
-      alternatives.push({
-        name: `Local ${foodGroup} alternatives`,
-        co2Impact: co2Impact * 0.3,
+        name: `Local food alternatives`,
+        co2Impact: co2Impact * 0.25,
         distanceReduction: 85,
         benefits: [
-          `Similar nutritional profile to ${produceName}`,
-          "Adapted to local growing conditions",
-          "Significantly lower carbon footprint"
+          "Significantly lower transportation emissions",
+          "Supports local food economy",
+          "Generally lower overall environmental impact"
         ]
       });
     }
+    
+    console.log("Generated local alternatives:", alternatives);
     
     // Return up to 3 alternatives
     return alternatives.slice(0, 3);
@@ -412,13 +527,13 @@ const generateLocalAlternatives = async (
     
     // Return a fallback alternative
     return [{
-      name: `Local alternatives to ${produceName}`,
+      name: `Local alternatives`,
       co2Impact: co2Impact * 0.3,
       distanceReduction: 85,
       benefits: [
         "Reduced transportation emissions",
-        "Fresh seasonal options",
-        "Support for local agriculture"
+        "Support for regional food systems",
+        "Often fresher and more seasonal"
       ]
     }];
   }
@@ -432,7 +547,7 @@ export const analyzeProduceSustainability = async (
 ): Promise<ProduceInfo> => {
   try {
     // Show progress
-    const progressToast = toast({
+    toast({
       title: "Analyzing produce data...",
       description: "Using AI model to analyze sustainability...",
     });
@@ -507,6 +622,11 @@ export const analyzeProduceSustainability = async (
       userLocation: userLocationString
     };
 
+    // Log the results to console for verification
+    console.log("Analysis complete:", result);
+    console.log("Seasonal alternatives:", result.seasonalAlternatives);
+    console.log("Local alternatives:", result.localAlternatives);
+    
     // Dismiss progress toast
     toast({
       title: "Analysis complete",

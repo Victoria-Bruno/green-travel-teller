@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { AlternativeOption } from '../services/bertService';
-import { Leaf, TrendingDown } from 'lucide-react';
+import { Leaf, TrendingDown, Heart } from 'lucide-react';
 
 interface AlternativesSectionProps {
   title: string;
@@ -30,9 +30,16 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
               <span className="font-medium text-gray-800">{alternative.name}</span>
               <div className="flex items-center text-green-600 text-xs font-medium">
                 <TrendingDown className="w-3 h-3 mr-1" />
-                <span>{alternative.distanceReduction}% emissions</span>
+                <span>{alternative.distanceReduction}% lower emissions</span>
               </div>
             </div>
+            
+            {alternative.nutritionalSimilarity && (
+              <div className="flex items-center text-xs text-purple-600 mt-1 mb-1">
+                <Heart className="w-3 h-3 mr-1" />
+                <span>{alternative.nutritionalSimilarity}</span>
+              </div>
+            )}
             
             <div className="text-xs text-gray-600 mt-1">
               {alternative.benefits && alternative.benefits.map((benefit, i) => (

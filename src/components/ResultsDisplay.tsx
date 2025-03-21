@@ -21,8 +21,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   
   // Check if we have any alternatives to display
   const hasAlternatives = (
-    data.seasonalAlternatives?.length > 0 || 
-    data.localAlternatives?.length > 0
+    (data.seasonalAlternatives && data.seasonalAlternatives.length > 0) || 
+    (data.localAlternatives && data.localAlternatives.length > 0)
   );
   
   return (
