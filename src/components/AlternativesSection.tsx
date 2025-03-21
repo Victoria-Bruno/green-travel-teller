@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { AlternativeOption } from '../services/bertService';
-import { Leaf, TrendingDown, Heart } from 'lucide-react';
+import { Leaf, TrendingDown, Heart, Info } from 'lucide-react';
 
 interface AlternativesSectionProps {
   title: string;
@@ -27,7 +27,7 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
             className="bg-white/60 rounded-lg p-3 border border-sage-100 hover:border-sage-200 transition-all"
           >
             <div className="flex justify-between items-start mb-1">
-              <span className="font-medium text-gray-800">{alternative.name}</span>
+              <span className="font-medium text-lg text-gray-800">{alternative.name}</span>
               <div className="flex items-center text-green-600 text-xs font-medium">
                 <TrendingDown className="w-3 h-3 mr-1" />
                 <span>{alternative.distanceReduction}% lower emissions</span>
@@ -37,13 +37,18 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
             {alternative.nutritionalSimilarity && (
               <div className="flex items-center text-xs text-purple-600 mt-1 mb-1">
                 <Heart className="w-3 h-3 mr-1" />
-                <span>{alternative.nutritionalSimilarity}</span>
+                <span className="font-medium">Nutritional Profile:</span>
+                <span className="ml-1">{alternative.nutritionalSimilarity}</span>
               </div>
             )}
             
-            <div className="text-xs text-gray-600 mt-1">
+            <div className="text-xs text-gray-600 mt-2">
+              <div className="flex items-start gap-1.5 mt-0.5">
+                <Info className="w-3 h-3 text-sage-600 mt-0.5 flex-shrink-0" />
+                <span className="font-medium">Why this is a good alternative:</span>
+              </div>
               {alternative.benefits && alternative.benefits.map((benefit, i) => (
-                <p key={i} className="flex items-center gap-1.5 mt-0.5">
+                <p key={i} className="flex items-center gap-1.5 mt-1 ml-4">
                   <span className="w-1 h-1 rounded-full bg-sage-400 inline-block flex-shrink-0" />
                   <span>{benefit}</span>
                 </p>

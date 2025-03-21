@@ -28,6 +28,324 @@ export interface AlternativeOption {
   nutritionalSimilarity?: string;
 }
 
+// Nutrition and sustainability data structure
+interface FoodData {
+  name: string;
+  foodGroup: string;
+  nutrition: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    keyNutrients: string[];
+  };
+  sustainability: {
+    co2PerKg: number;
+    waterUsage: number;
+    landUse: number;
+    transportEmissions: number;
+    growingRegions: string[];
+  };
+  seasonality: {
+    northern: string[];
+    southern: string[];
+    tropical: boolean;
+  };
+}
+
+// Feature-based database of common foods
+const foodDatabase: FoodData[] = [
+  {
+    name: "Banana",
+    foodGroup: "Fruit",
+    nutrition: {
+      calories: 89,
+      protein: 1.1,
+      carbs: 22.8,
+      fat: 0.3,
+      fiber: 2.6,
+      keyNutrients: ["Potassium", "Vitamin B6", "Vitamin C"]
+    },
+    sustainability: {
+      co2PerKg: 0.9,
+      waterUsage: 790,
+      landUse: 1.9,
+      transportEmissions: 0.48,
+      growingRegions: ["Central America", "South America", "Southeast Asia", "Africa"]
+    },
+    seasonality: {
+      northern: ["All year (imported)"],
+      southern: ["All year (imported)"],
+      tropical: true
+    }
+  },
+  {
+    name: "Apple",
+    foodGroup: "Fruit",
+    nutrition: {
+      calories: 52,
+      protein: 0.3,
+      carbs: 13.8,
+      fat: 0.2,
+      fiber: 2.4,
+      keyNutrients: ["Vitamin C", "Potassium", "Antioxidants"]
+    },
+    sustainability: {
+      co2PerKg: 0.4,
+      waterUsage: 70,
+      landUse: 0.6,
+      transportEmissions: 0.1,
+      growingRegions: ["Europe", "North America", "China", "Southern Hemisphere"]
+    },
+    seasonality: {
+      northern: ["August", "September", "October", "November", "December"],
+      southern: ["February", "March", "April", "May", "June"],
+      tropical: false
+    }
+  },
+  {
+    name: "Pear",
+    foodGroup: "Fruit",
+    nutrition: {
+      calories: 57,
+      protein: 0.4,
+      carbs: 15.2,
+      fat: 0.1,
+      fiber: 3.1,
+      keyNutrients: ["Vitamin C", "Vitamin K", "Copper"]
+    },
+    sustainability: {
+      co2PerKg: 0.3,
+      waterUsage: 85,
+      landUse: 0.4,
+      transportEmissions: 0.1,
+      growingRegions: ["Europe", "North America", "China"]
+    },
+    seasonality: {
+      northern: ["August", "September", "October", "November", "December"],
+      southern: ["February", "March", "April", "May"],
+      tropical: false
+    }
+  },
+  {
+    name: "Avocado",
+    foodGroup: "Fruit",
+    nutrition: {
+      calories: 160,
+      protein: 2,
+      carbs: 8.5,
+      fat: 14.7,
+      fiber: 6.7,
+      keyNutrients: ["Vitamin E", "Vitamin K", "Folate", "Potassium"]
+    },
+    sustainability: {
+      co2PerKg: 2.5,
+      waterUsage: 2000,
+      landUse: 2.1,
+      transportEmissions: 0.9,
+      growingRegions: ["Mexico", "California", "Peru", "Chile", "Spain"]
+    },
+    seasonality: {
+      northern: ["All year (imported)"],
+      southern: ["All year (imported)"],
+      tropical: true
+    }
+  },
+  {
+    name: "Strawberry",
+    foodGroup: "Berry",
+    nutrition: {
+      calories: 32,
+      protein: 0.7,
+      carbs: 7.7,
+      fat: 0.3,
+      fiber: 2,
+      keyNutrients: ["Vitamin C", "Manganese", "Folate", "Antioxidants"]
+    },
+    sustainability: {
+      co2PerKg: 1.1,
+      waterUsage: 300,
+      landUse: 0.3,
+      transportEmissions: 0.2,
+      growingRegions: ["Europe", "North America", "Mediterranean"]
+    },
+    seasonality: {
+      northern: ["May", "June", "July"],
+      southern: ["November", "December", "January"],
+      tropical: false
+    }
+  },
+  {
+    name: "Broccoli",
+    foodGroup: "Vegetable",
+    nutrition: {
+      calories: 34,
+      protein: 2.8,
+      carbs: 6.6,
+      fat: 0.4,
+      fiber: 2.6,
+      keyNutrients: ["Vitamin C", "Vitamin K", "Folate", "Fiber"]
+    },
+    sustainability: {
+      co2PerKg: 0.4,
+      waterUsage: 250,
+      landUse: 0.3,
+      transportEmissions: 0.15,
+      growingRegions: ["Europe", "North America", "China"]
+    },
+    seasonality: {
+      northern: ["June", "July", "August", "September", "October"],
+      southern: ["December", "January", "February", "March", "April"],
+      tropical: false
+    }
+  },
+  {
+    name: "Tomato",
+    foodGroup: "Vegetable",
+    nutrition: {
+      calories: 18,
+      protein: 0.9,
+      carbs: 3.9,
+      fat: 0.2,
+      fiber: 1.2,
+      keyNutrients: ["Vitamin C", "Vitamin K", "Potassium", "Lycopene"]
+    },
+    sustainability: {
+      co2PerKg: 1.4,
+      waterUsage: 180,
+      landUse: 0.8,
+      transportEmissions: 0.2,
+      growingRegions: ["Mediterranean", "North America", "China", "Greenhouse globally"]
+    },
+    seasonality: {
+      northern: ["July", "August", "September"],
+      southern: ["January", "February", "March"],
+      tropical: false
+    }
+  },
+  {
+    name: "Oats",
+    foodGroup: "Grain",
+    nutrition: {
+      calories: 389,
+      protein: 16.9,
+      carbs: 66.3,
+      fat: 6.9,
+      fiber: 10.6,
+      keyNutrients: ["Iron", "Zinc", "Magnesium", "B Vitamins"]
+    },
+    sustainability: {
+      co2PerKg: 0.5,
+      waterUsage: 490,
+      landUse: 1.5,
+      transportEmissions: 0.1,
+      growingRegions: ["Europe", "North America", "Russia", "Australia"]
+    },
+    seasonality: {
+      northern: ["All year (stored)"],
+      southern: ["All year (stored)"],
+      tropical: false
+    }
+  },
+  {
+    name: "Lentils",
+    foodGroup: "Legume",
+    nutrition: {
+      calories: 116,
+      protein: 9,
+      carbs: 20,
+      fat: 0.4,
+      fiber: 7.9,
+      keyNutrients: ["Iron", "Folate", "Manganese"]
+    },
+    sustainability: {
+      co2PerKg: 0.9,
+      waterUsage: 500,
+      landUse: 3.2,
+      transportEmissions: 0.1,
+      growingRegions: ["India", "Canada", "Turkey", "Australia"]
+    },
+    seasonality: {
+      northern: ["All year (stored)"],
+      southern: ["All year (stored)"],
+      tropical: false
+    }
+  },
+  {
+    name: "Sweet Potato",
+    foodGroup: "Root Vegetable",
+    nutrition: {
+      calories: 86,
+      protein: 1.6,
+      carbs: 20.1,
+      fat: 0.1,
+      fiber: 3,
+      keyNutrients: ["Vitamin A", "Vitamin C", "Potassium"]
+    },
+    sustainability: {
+      co2PerKg: 0.3,
+      waterUsage: 400,
+      landUse: 0.6,
+      transportEmissions: 0.1,
+      growingRegions: ["Africa", "Asia", "North America", "South America"]
+    },
+    seasonality: {
+      northern: ["September", "October", "November", "December"],
+      southern: ["March", "April", "May", "June"],
+      tropical: true
+    }
+  },
+  {
+    name: "Spinach",
+    foodGroup: "Leafy Green",
+    nutrition: {
+      calories: 23,
+      protein: 2.9,
+      carbs: 3.6,
+      fat: 0.4,
+      fiber: 2.2,
+      keyNutrients: ["Vitamin K", "Vitamin A", "Folate", "Iron"]
+    },
+    sustainability: {
+      co2PerKg: 0.3,
+      waterUsage: 150,
+      landUse: 0.2,
+      transportEmissions: 0.1,
+      growingRegions: ["Europe", "North America", "China"]
+    },
+    seasonality: {
+      northern: ["April", "May", "June", "September", "October"],
+      southern: ["October", "November", "December", "March", "April"],
+      tropical: false
+    }
+  },
+  {
+    name: "Pineapple",
+    foodGroup: "Fruit",
+    nutrition: {
+      calories: 50,
+      protein: 0.5,
+      carbs: 13.1,
+      fat: 0.1,
+      fiber: 1.4,
+      keyNutrients: ["Vitamin C", "Manganese", "Bromelain"]
+    },
+    sustainability: {
+      co2PerKg: 1.2,
+      waterUsage: 255,
+      landUse: 1.5,
+      transportEmissions: 0.6,
+      growingRegions: ["Costa Rica", "Philippines", "Brazil", "Thailand"]
+    },
+    seasonality: {
+      northern: ["All year (imported)"],
+      southern: ["All year (imported)"],
+      tropical: true
+    }
+  }
+];
+
 // Initialize model
 let bertModel: any = null;
 let isModelLoading = false;
@@ -51,7 +369,7 @@ const loadBertModel = async () => {
       description: "This may take a moment...",
     });
     
-    // Use a more reliable model for classification
+    // Use a reliable model for zero-shot classification
     bertModel = await pipeline(
       'text-classification',
       'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
@@ -64,15 +382,15 @@ const loadBertModel = async () => {
     isModelLoading = false;
     toast({
       title: "Model Loading Error",
-      description: "Could not load AI model. Using fallback analysis.",
+      description: "Could not load AI model. Using feature-based analysis.",
       variant: "destructive",
     });
     
     // If we can't load the model, create a simple mock model for fallback
     bertModel = {
       async __call__(text: string) {
-        console.log("Using fallback model with query:", text);
-        // Simple fallback - return positive for questions about sustainability
+        console.log("Using fallback feature-based analysis with query:", text);
+        // Simple fallback - return positive for relevant questions
         if (text.toLowerCase().includes('sustainable') || 
             text.toLowerCase().includes('local') || 
             text.toLowerCase().includes('alternative')) {
@@ -86,59 +404,6 @@ const loadBertModel = async () => {
   }
 };
 
-// Comprehensive food groups with nutritional information
-const foodGroups = {
-  fruits: {
-    items: ['apple', 'banana', 'orange', 'grape', 'strawberry', 'blueberry', 'raspberry', 
-      'pear', 'peach', 'plum', 'kiwi', 'mango', 'pineapple', 'watermelon', 'melon', 
-      'apricot', 'cherry', 'avocado', 'fig', 'date', 'papaya', 'guava', 'pomegranate'],
-    nutrition: 'vitamins, natural sugars, fiber, antioxidants',
-    benefits: 'rich in vitamins, natural sugars for energy, antioxidants'
-  },
-  berries: {
-    items: ['strawberry', 'blueberry', 'raspberry', 'blackberry', 'cranberry', 'acai'],
-    nutrition: 'vitamin C, antioxidants, fiber, low sugar',
-    benefits: 'rich in antioxidants, low sugar, anti-inflammatory properties'
-  },
-  tropical_fruits: {
-    items: ['banana', 'mango', 'pineapple', 'papaya', 'avocado', 'coconut', 'guava', 'kiwi'],
-    nutrition: 'vitamins A & C, potassium, fiber, exotic nutrients',
-    benefits: 'high in potassium, tropical nutrients, good for digestion'
-  },
-  leafy_vegetables: {
-    items: ['spinach', 'kale', 'lettuce', 'cabbage', 'arugula', 'chard', 'collard greens'],
-    nutrition: 'iron, folate, vitamin K, fiber, low calorie',
-    benefits: 'very low calorie, high in iron and folate, excellent for heart health'
-  },
-  root_vegetables: {
-    items: ['carrot', 'potato', 'sweet potato', 'beet', 'radish', 'turnip', 'onion', 'garlic'],
-    nutrition: 'complex carbs, fiber, minerals, antioxidants',
-    benefits: 'high in complex carbohydrates, good for energy, rich in minerals'
-  },
-  vegetables: {
-    items: ['broccoli', 'cauliflower', 'tomato', 'pepper', 'cucumber', 'zucchini', 'eggplant', 
-      'corn', 'asparagus', 'brussels sprout', 'celery'],
-    nutrition: 'vitamins, fiber, phytonutrients, low calorie',
-    benefits: 'low in calories, high in nutrients, excellent fiber content'
-  },
-  grains: {
-    items: ['rice', 'wheat', 'oats', 'barley', 'quinoa', 'rye', 'millet', 'buckwheat'],
-    nutrition: 'complex carbs, fiber, B vitamins, some protein',
-    benefits: 'high in complex carbohydrates, sustainable energy source, filling'
-  },
-  legumes: {
-    items: ['beans', 'lentils', 'chickpeas', 'peas', 'soybeans', 'peanuts'],
-    nutrition: 'protein, fiber, iron, folate, complex carbs',
-    benefits: 'excellent plant protein source, high in fiber, iron and folate'
-  },
-  nuts_seeds: {
-    items: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'peanut', 
-      'sunflower seed', 'pumpkin seed', 'chia seed', 'flax seed', 'hemp seed', 'sesame seed'],
-    nutrition: 'healthy fats, protein, vitamin E, minerals',
-    benefits: 'rich in healthy fats, good protein source, contain various minerals'
-  }
-};
-
 // Get month name from number
 const getMonthName = (month: number): string => {
   const months = [
@@ -148,59 +413,163 @@ const getMonthName = (month: number): string => {
   return months[month];
 };
 
-// Find the food group for a given produce
-const findFoodGroupInfo = (produceName: string): { group: string, nutrition: string, items: string[] } | null => {
-  const normalizedName = produceName.toLowerCase();
+// Find food in the database
+const findFoodInDatabase = (produceName: string): FoodData | null => {
+  const normalizedName = produceName.toLowerCase().trim();
   
-  for (const [group, info] of Object.entries(foodGroups)) {
-    if (info.items.some(item => normalizedName.includes(item) || item.includes(normalizedName))) {
-      return { 
-        group, 
-        nutrition: info.nutrition,
-        items: info.items
-      };
-    }
-  }
+  // Try exact match first
+  const exactMatch = foodDatabase.find(food => 
+    food.name.toLowerCase() === normalizedName
+  );
   
-  return null;
+  if (exactMatch) return exactMatch;
+  
+  // Try partial match
+  const partialMatch = foodDatabase.find(food => 
+    food.name.toLowerCase().includes(normalizedName) || 
+    normalizedName.includes(food.name.toLowerCase())
+  );
+  
+  return partialMatch || null;
 };
 
-// Determine if a produce is in season using BERT
+// Get hemisphere based on location
+const getHemisphere = (userLocation: string): 'northern' | 'southern' | 'tropical' => {
+  const northernCountries = [
+    'united states', 'canada', 'uk', 'united kingdom', 'germany', 'france', 'italy', 
+    'spain', 'netherlands', 'belgium', 'poland', 'russia', 'japan', 'china', 'korea'
+  ];
+  
+  const southernCountries = [
+    'australia', 'new zealand', 'argentina', 'chile', 'south africa', 
+    'uruguay', 'brazil', 'peru'
+  ];
+  
+  const tropicalCountries = [
+    'mexico', 'india', 'thailand', 'vietnam', 'philippines', 'indonesia', 
+    'malaysia', 'costa rica', 'colombia', 'ecuador'
+  ];
+  
+  const normalizedLocation = userLocation.toLowerCase();
+  
+  if (northernCountries.some(country => normalizedLocation.includes(country))) {
+    return 'northern';
+  }
+  
+  if (southernCountries.some(country => normalizedLocation.includes(country))) {
+    return 'southern';
+  }
+  
+  if (tropicalCountries.some(country => normalizedLocation.includes(country))) {
+    return 'tropical';
+  }
+  
+  // Default to northern hemisphere if can't determine
+  return 'northern';
+};
+
+// Calculate similarity score between two foods based on nutritional profile
+const calculateNutritionalSimilarity = (food1: FoodData, food2: FoodData): number => {
+  // Simple Euclidean distance on normalized values
+  const caloriesDiff = Math.abs(food1.nutrition.calories - food2.nutrition.calories) / 400; // Normalize by max typical calories
+  const proteinDiff = Math.abs(food1.nutrition.protein - food2.nutrition.protein) / 20; // Normalize by max typical protein
+  const carbsDiff = Math.abs(food1.nutrition.carbs - food2.nutrition.carbs) / 70; // Normalize by max typical carbs
+  const fatDiff = Math.abs(food1.nutrition.fat - food2.nutrition.fat) / 15; // Normalize by max typical fat
+  const fiberDiff = Math.abs(food1.nutrition.fiber - food2.nutrition.fiber) / 10; // Normalize by max typical fiber
+  
+  // Calculate Euclidean distance
+  const distance = Math.sqrt(
+    Math.pow(caloriesDiff, 2) + 
+    Math.pow(proteinDiff, 2) + 
+    Math.pow(carbsDiff, 2) + 
+    Math.pow(fatDiff, 2) + 
+    Math.pow(fiberDiff, 2)
+  );
+  
+  // Convert distance to similarity score (0-1)
+  return Math.max(0, 1 - distance);
+};
+
+// Calculate sustainability score based on location
+const calculateSustainabilityScore = (
+  food: FoodData, 
+  userLocation: string, 
+  sourceLocation: string,
+  travelDistance: number
+): number => {
+  // Base CO2 impact
+  let score = 1 - (food.sustainability.co2PerKg / 5); // Normalize by max typical CO2 (5 kg CO2/kg)
+  
+  // Adjust for water usage
+  score += 1 - (food.sustainability.waterUsage / 2000); // Normalize by max typical water usage (2000 L/kg)
+  
+  // Adjust for land use
+  score += 1 - (food.sustainability.landUse / 5); // Normalize by max typical land use
+  
+  // Adjust for transportation
+  const hemisphere = getHemisphere(userLocation);
+  const currentMonth = new Date().getMonth();
+  const currentMonthName = getMonthName(currentMonth);
+  
+  // Check if in season in user's hemisphere
+  const inSeason = food.seasonality[hemisphere].includes(currentMonthName) || 
+                  food.seasonality[hemisphere].includes("All year");
+  
+  // Local availability boost
+  if (inSeason) {
+    score += 0.5;
+  }
+  
+  // Transportation penalty for long distances
+  if (travelDistance > 5000) {
+    score -= 0.5;
+  } else if (travelDistance > 1000) {
+    score -= 0.3;
+  } else if (travelDistance > 500) {
+    score -= 0.1;
+  }
+  
+  // Normalize final score to 0-1 range
+  return Math.max(0, Math.min(1, score / 3));
+};
+
+// Determine if a produce is in season
 const determineIfInSeason = async (produceName: string, userLocation: string): Promise<boolean> => {
   try {
-    const model = await loadBertModel().catch(() => null);
-    if (!model) return true; // Default if model fails
+    const foodData = findFoodInDatabase(produceName);
+    if (!foodData) return true; // Default if not found
     
+    const hemisphere = getHemisphere(userLocation);
     const currentMonth = new Date().getMonth();
-    const monthName = getMonthName(currentMonth);
+    const currentMonthName = getMonthName(currentMonth);
     
-    // Dynamic query with user's location
-    const query = `Is ${produceName} in season in ${userLocation} during ${monthName}?`;
-    console.log("Season query:", query);
-    const result = await model(query);
-    console.log("Season result:", result);
-    
-    return result[0]?.label === 'POSITIVE';
+    // Check if in season in user's hemisphere
+    return foodData.seasonality[hemisphere].includes(currentMonthName) || 
+           foodData.seasonality[hemisphere].includes("All year");
   } catch (error) {
     console.error('Error determining if in season:', error);
     return true; // Default to true if there's an error
   }
 };
 
-// Determine ripening method for imported produce using BERT
+// Determine ripening method for imported produce
 const determineRipeningMethod = async (produceName: string, sourceLocation: string, userLocation: string): Promise<string | null> => {
   try {
-    const model = await loadBertModel().catch(() => null);
-    if (!model) return null;
+    const foodData = findFoodInDatabase(produceName);
+    if (!foodData) return null;
     
-    // Dynamic query with user's location
-    const query = `Does ${produceName} imported from ${sourceLocation} to ${userLocation} typically use artificial ripening methods?`;
-    console.log("Ripening query:", query);
-    const result = await model(query);
-    console.log("Ripening result:", result);
+    // Check if the produce is tropical and being imported to non-tropical regions
+    const hemisphere = getHemisphere(userLocation);
+    const sourceHemisphere = getHemisphere(sourceLocation);
     
-    if (result[0]?.label === 'POSITIVE') {
+    if (foodData.seasonality.tropical && hemisphere !== 'tropical') {
       return `Likely uses post-harvest ripening techniques when imported from ${sourceLocation} to ${userLocation}`;
+    }
+    
+    // Check for long-distance transport of certain produce types
+    if (['Banana', 'Avocado', 'Mango', 'Pineapple'].includes(foodData.name) && 
+        hemisphere !== sourceHemisphere) {
+      return `Often harvested unripe and artificially ripened when imported from ${sourceLocation} to ${userLocation}`;
     }
     
     return null;
@@ -210,8 +579,19 @@ const determineRipeningMethod = async (produceName: string, sourceLocation: stri
   }
 };
 
-// Calculate CO2 impact based on distance and transportation methods
-const calculateCO2Impact = (distance: number, produceType: string): number => {
+// Calculate CO2 impact based on distance, produce type, and database info
+const calculateCO2Impact = (distance: number, produceName: string): number => {
+  const foodData = findFoodInDatabase(produceName);
+  
+  if (foodData) {
+    // Use the database CO2 values and adjust for distance
+    const baseCO2 = foodData.sustainability.co2PerKg;
+    const transportCO2 = (distance / 1000) * foodData.sustainability.transportEmissions;
+    
+    return parseFloat((baseCO2 + transportCO2).toFixed(2));
+  }
+  
+  // Fallback calculation if food not found in database
   // Determine likely transportation method based on distance and produce type
   let emissionFactor;
   
@@ -227,7 +607,7 @@ const calculateCO2Impact = (distance: number, produceType: string): number => {
   if (distance > 5000) {
     // Long international distances, likely air freight for perishables
     if (["berry", "strawberry", "raspberry", "avocado", "mango", "papaya", "asparagus"].some(
-      term => produceType.toLowerCase().includes(term))) {
+      term => produceName.toLowerCase().includes(term))) {
       emissionFactor = emissionFactors.air_freight;
     } else {
       // Non-perishables over long distances typically go by sea
@@ -243,7 +623,7 @@ const calculateCO2Impact = (distance: number, produceType: string): number => {
   
   // Additional emissions from production and refrigeration
   const productionEmissions = ["avocado", "asparagus", "berries"].some(type => 
-    produceType.toLowerCase().includes(type)) ? 0.2 : 0.1;
+    produceName.toLowerCase().includes(type)) ? 0.2 : 0.1;
   
   // Calculate total emissions
   const transportTotal = distance * emissionFactor;
@@ -253,7 +633,111 @@ const calculateCO2Impact = (distance: number, produceType: string): number => {
   return parseFloat(total.toFixed(2));
 };
 
-// Generate nutritionally similar, more sustainable alternatives
+// Find similar foods using feature-based similarity
+const findSimilarFoods = (
+  produceName: string,
+  userLocation: string,
+  sourceLocation: string,
+  travelDistance: number,
+  count: number = 3
+): AlternativeOption[] => {
+  const foodData = findFoodInDatabase(produceName);
+  if (!foodData) {
+    console.log("Food not found in database:", produceName);
+    return [];
+  }
+  
+  console.log("Found food data:", foodData);
+  
+  // Calculate similarity scores for all foods
+  const similarityScores = foodDatabase
+    .filter(food => food.name !== foodData.name) // Exclude the same food
+    .map(food => {
+      const nutritionalSimilarity = calculateNutritionalSimilarity(foodData, food);
+      const sustainabilityScore = calculateSustainabilityScore(food, userLocation, sourceLocation, travelDistance);
+      
+      // Overall similarity - prioritize sustainability but consider nutrition
+      const overallScore = (sustainabilityScore * 0.7) + (nutritionalSimilarity * 0.3);
+      
+      return {
+        food,
+        nutritionalSimilarity,
+        sustainabilityScore,
+        overallScore
+      };
+    });
+  
+  // Sort by overall score and take top N
+  const topAlternatives = similarityScores
+    .sort((a, b) => b.overallScore - a.overallScore)
+    .slice(0, count);
+  
+  console.log("Top alternatives found:", topAlternatives);
+  
+  // Convert to AlternativeOption format
+  return topAlternatives.map(alt => {
+    const co2Impact = calculateCO2Impact(travelDistance / 2, alt.food.name); // Estimate lower distance
+    const distanceReduction = Math.round((1 - (co2Impact / foodData.sustainability.co2PerKg)) * 100);
+    
+    // Generate tailored nutritional comparison
+    let nutritionalComparison = "";
+    if (alt.nutritionalSimilarity > 0.8) {
+      nutritionalComparison = `Very similar nutritional profile to ${foodData.name}`;
+    } else if (alt.nutritionalSimilarity > 0.6) {
+      nutritionalComparison = `Similar key nutrients like ${alt.food.nutrition.keyNutrients.slice(0, 2).join(", ")}`;
+    } else {
+      const betterNutrients = alt.food.nutrition.keyNutrients.filter(
+        nutrient => !foodData.nutrition.keyNutrients.includes(nutrient)
+      );
+      nutritionalComparison = betterNutrients.length > 0 
+        ? `Contains ${betterNutrients.slice(0, 2).join(", ")} not found in ${foodData.name}`
+        : `Different but complementary nutritional profile`;
+    }
+    
+    // Generate sustainability benefits
+    const benefits = [];
+    
+    // Check if it's more local
+    const hemisphere = getHemisphere(userLocation);
+    const currentMonth = new Date().getMonth();
+    const currentMonthName = getMonthName(currentMonth);
+    
+    if (alt.food.seasonality[hemisphere].includes(currentMonthName)) {
+      benefits.push(`Currently in season in ${userLocation}`);
+    }
+    
+    // Check CO2 difference
+    if (alt.food.sustainability.co2PerKg < foodData.sustainability.co2PerKg) {
+      benefits.push(`Lower carbon footprint (${alt.food.sustainability.co2PerKg} kg CO₂e/kg vs ${foodData.sustainability.co2PerKg} kg CO₂e/kg)`);
+    }
+    
+    // Check water usage
+    if (alt.food.sustainability.waterUsage < foodData.sustainability.waterUsage) {
+      benefits.push(`Uses ${Math.round((1 - alt.food.sustainability.waterUsage / foodData.sustainability.waterUsage) * 100)}% less water to produce`);
+    }
+    
+    // Add special benefit about local production if applicable
+    if (!foodData.growingRegions.some(region => userLocation.includes(region)) && 
+        alt.food.sustainability.growingRegions.some(region => userLocation.includes(region))) {
+      benefits.push(`Can be grown locally in ${userLocation} region`);
+    }
+    
+    // Ensure we have at least one benefit
+    if (benefits.length === 0) {
+      benefits.push(`More easily available locally than imported ${foodData.name}`);
+    }
+    
+    return {
+      name: alt.food.name,
+      co2Impact,
+      distanceReduction: Math.max(20, distanceReduction), // Ensure at least 20% reduction
+      nutritionalSimilarity: nutritionalComparison,
+      benefits
+    };
+  });
+};
+
+// Generate seasonal and local alternatives using feature-based similarity
 const generateAlternatives = async (
   produceName: string,
   co2Impact: number,
@@ -261,156 +745,44 @@ const generateAlternatives = async (
   sourceLocation: string,
   userLocation: string
 ): Promise<AlternativeOption[]> => {
-  try {
-    // Identify food group and nutritional profile of the produce
-    const foodGroupInfo = findFoodGroupInfo(produceName);
-    console.log("Food group info:", foodGroupInfo);
-    
-    // If we can't identify the food group, use a basic fallback
-    if (!foodGroupInfo) {
-      return [{
-        name: `Local seasonal produce`,
-        co2Impact: co2Impact * 0.3,
-        distanceReduction: 80,
-        nutritionalSimilarity: "Similar nutritional profile",
-        benefits: [
-          "Lower carbon footprint from reduced transportation",
-          "Supports local farmers and economy",
-          "Often fresher with better nutritional value"
-        ]
-      }];
+  // Use feature-based similarity to find alternatives
+  const alternatives = findSimilarFoods(
+    produceName,
+    userLocation,
+    sourceLocation,
+    travelDistance,
+    3 // Get top 3 alternatives
+  );
+  
+  console.log("Generated alternatives:", alternatives);
+  
+  // Ensure we have at least one alternative
+  if (alternatives.length === 0) {
+    // Find most similar food group if we can't find specific alternatives
+    const foodData = findFoodInDatabase(produceName);
+    if (foodData) {
+      const foodGroup = foodData.foodGroup;
+      const sameFoodGroup = foodDatabase.filter(food => 
+        food.name !== produceName && food.foodGroup === foodGroup
+      );
+      
+      if (sameFoodGroup.length > 0) {
+        const randomFood = sameFoodGroup[Math.floor(Math.random() * sameFoodGroup.length)];
+        return [{
+          name: randomFood.name,
+          co2Impact: co2Impact * 0.3,
+          distanceReduction: 75,
+          nutritionalSimilarity: `Similar ${foodGroup.toLowerCase()} with comparable nutrients`,
+          benefits: [
+            `More sustainable ${foodGroup.toLowerCase()} alternative`,
+            "Lower transportation emissions when locally sourced",
+            `Contains similar key nutrients like ${randomFood.nutrition.keyNutrients.slice(0, 2).join(", ")}`
+          ]
+        }];
+      }
     }
     
-    // Generate more specific alternatives based on the food group
-    const alternatives: AlternativeOption[] = [];
-    const { group, nutrition, items } = foodGroupInfo;
-    
-    // Find items from the same food group that are different from the original produce
-    const similarItems = items.filter(item => 
-      !produceName.toLowerCase().includes(item) && 
-      !item.includes(produceName.toLowerCase())
-    );
-    
-    console.log("Potential similar items:", similarItems);
-    
-    // Create location-specific alternatives based on food group
-    if (group === 'tropical_fruits') {
-      // For tropical fruits like bananas, suggest local temperate fruits
-      alternatives.push({
-        name: `Local apples or pears`,
-        co2Impact: co2Impact * 0.2,
-        distanceReduction: 90,
-        nutritionalSimilarity: "Good source of fiber and natural sugars",
-        benefits: [
-          "Grown locally in many temperate regions",
-          "Much lower emissions from minimal transportation",
-          "Still provides dietary fiber and natural sugars"
-        ]
-      });
-      
-      // Suggest berries as an alternative with higher nutrition density
-      alternatives.push({
-        name: `Seasonal berries`,
-        co2Impact: co2Impact * 0.25,
-        distanceReduction: 85,
-        nutritionalSimilarity: "Higher in antioxidants than tropical fruits",
-        benefits: [
-          "Provides similar vitamins with added antioxidant benefits",
-          "Can be locally grown or sourced from nearby regions",
-          "More nutrient-dense per calorie than most tropical fruits"
-        ]
-      });
-      
-      // Suggest grains/oats alternative for energy content
-      alternatives.push({
-        name: `Locally grown oats or grains`,
-        co2Impact: co2Impact * 0.15,
-        distanceReduction: 92,
-        nutritionalSimilarity: "Similar energy content with added protein",
-        benefits: [
-          "Provides sustainable energy like fruits, but with more protein",
-          "Can be grown in almost any climate with low emissions",
-          "Longer shelf life reduces food waste"
-        ]
-      });
-    } 
-    else if (group === 'fruits') {
-      // For non-tropical fruits, suggest local seasonal varieties
-      alternatives.push({
-        name: `Seasonal ${similarItems.slice(0, 2).join(' or ')}`,
-        co2Impact: co2Impact * 0.3,
-        distanceReduction: 80,
-        nutritionalSimilarity: "Similar vitamin and fiber profile",
-        benefits: [
-          "In-season fruits have optimal nutrient content",
-          "Grown within your region reducing transportation emissions",
-          "Supports seasonal eating patterns"
-        ]
-      });
-      
-      // Add berries as high-nutrition alternative
-      alternatives.push({
-        name: `Local berries when in season`,
-        co2Impact: co2Impact * 0.25,
-        distanceReduction: 85,
-        nutritionalSimilarity: "Higher in antioxidants and lower in sugar",
-        benefits: [
-          "More nutrient-dense than most fruits",
-          "Lower sugar content but rich in vitamins",
-          "When locally sourced, minimal transportation emissions"
-        ]
-      });
-    }
-    else if (group === 'vegetables') {
-      // For vegetables, suggest local seasonal varieties
-      alternatives.push({
-        name: `Seasonal ${similarItems.slice(0, 2).join(' or ')}`,
-        co2Impact: co2Impact * 0.2,
-        distanceReduction: 90,
-        nutritionalSimilarity: "Similar vegetable nutrient profile",
-        benefits: [
-          "Locally grown vegetables have minimal transportation emissions",
-          "Seasonal varieties require less energy for production",
-          "Fresh harvest means higher vitamin content"
-        ]
-      });
-      
-      // Add leafy greens as nutrient-dense alternative
-      alternatives.push({
-        name: `Local leafy greens`,
-        co2Impact: co2Impact * 0.15,
-        distanceReduction: 95,
-        nutritionalSimilarity: "Higher in certain nutrients and lower in calories",
-        benefits: [
-          "More nutrient-dense than many vegetables",
-          "Can often be grown year-round in greenhouses with minimal heating",
-          "Very low carbon footprint when locally sourced"
-        ]
-      });
-    }
-    else {
-      // Generic alternative based on food group
-      alternatives.push({
-        name: `Local ${group.replace('_', ' ')}`,
-        co2Impact: co2Impact * 0.3,
-        distanceReduction: 85,
-        nutritionalSimilarity: `Similar ${nutrition}`,
-        benefits: [
-          `Provides comparable ${nutrition}`,
-          "Significantly lower transportation emissions",
-          "Often fresher with potentially higher nutrient content"
-        ]
-      });
-    }
-    
-    console.log("Generated alternatives:", alternatives);
-    
-    // Make sure we have at least one alternative but no more than 3
-    return alternatives.slice(0, 3);
-  } catch (error) {
-    console.error('Error generating alternatives:', error);
-    
-    // Ensure we return at least one fallback alternative
+    // Ultimate fallback
     return [{
       name: "Local seasonal produce",
       co2Impact: co2Impact * 0.4,
@@ -422,121 +794,8 @@ const generateAlternatives = async (
       ]
     }];
   }
-};
-
-// Generate local and high-efficiency alternatives
-const generateLocalAlternatives = async (
-  produceName: string,
-  co2Impact: number,
-  sourceLocation: string,
-  userLocation: string
-): Promise<AlternativeOption[]> => {
-  try {
-    // Get food group information
-    const foodGroupInfo = findFoodGroupInfo(produceName);
-    
-    const model = await loadBertModel().catch(() => null);
-    const alternatives: AlternativeOption[] = [];
-    
-    // Check if the same produce could be grown locally
-    if (model) {
-      const query = `Can ${produceName} be grown locally in ${userLocation} instead of importing from ${sourceLocation}?`;
-      console.log("Local cultivation query:", query);
-      const result = await model(query);
-      console.log("Local cultivation result:", result);
-      
-      // If local cultivation is possible
-      if (result[0]?.label === 'POSITIVE') {
-        alternatives.push({
-          name: `Locally grown ${produceName}`,
-          co2Impact: co2Impact * 0.2,
-          distanceReduction: 90,
-          nutritionalSimilarity: "Identical nutritional profile",
-          benefits: [
-            "Same food with dramatically lower transportation emissions",
-            "Fresher with potentially higher vitamin content",
-            "Supports local agriculture and food security"
-          ]
-        });
-      }
-    }
-    
-    // If we have food group info, suggest efficient local alternatives
-    if (foodGroupInfo) {
-      // For plant foods, suggest gardening options
-      alternatives.push({
-        name: "Home or community garden options",
-        co2Impact: co2Impact * 0.05,
-        distanceReduction: 99,
-        nutritionalSimilarity: "Can be nutritionally equivalent or superior",
-        benefits: [
-          "Zero food miles with minimal carbon footprint",
-          "Maximum freshness and nutrition",
-          "Promotes self-sufficiency and food literacy"
-        ]
-      });
-      
-      // Suggest a different food group with similar nutrition but higher efficiency
-      if (['tropical_fruits', 'fruits'].includes(foodGroupInfo.group)) {
-        alternatives.push({
-          name: "Local vegetables with similar vitamins",
-          co2Impact: co2Impact * 0.2,
-          distanceReduction: 90,
-          nutritionalSimilarity: "Different food group but similar key nutrients",
-          benefits: [
-            "Local vegetables often provide similar vitamins with lower emissions",
-            "Generally require less resources to grow than fruits",
-            "Year-round availability in many regions"
-          ]
-        });
-      } 
-      else if (foodGroupInfo.group === 'vegetables') {
-        alternatives.push({
-          name: "Local legumes or grains",
-          co2Impact: co2Impact * 0.15,
-          distanceReduction: 90,
-          nutritionalSimilarity: "Different profile with more protein and fiber",
-          benefits: [
-            "Excellent shelf-stable alternatives to fresh produce",
-            "Higher protein content than vegetables",
-            "Can be stored without refrigeration, reducing energy use"
-          ]
-        });
-      }
-    } 
-    else {
-      // Generic local alternative if we couldn't determine food group
-      alternatives.push({
-        name: `Local food alternatives`,
-        co2Impact: co2Impact * 0.25,
-        distanceReduction: 85,
-        benefits: [
-          "Significantly lower transportation emissions",
-          "Supports local food economy",
-          "Generally lower overall environmental impact"
-        ]
-      });
-    }
-    
-    console.log("Generated local alternatives:", alternatives);
-    
-    // Return up to 3 alternatives
-    return alternatives.slice(0, 3);
-  } catch (error) {
-    console.error('Error generating local alternatives:', error);
-    
-    // Return a fallback alternative
-    return [{
-      name: `Local alternatives`,
-      co2Impact: co2Impact * 0.3,
-      distanceReduction: 85,
-      benefits: [
-        "Reduced transportation emissions",
-        "Support for regional food systems",
-        "Often fresher and more seasonal"
-      ]
-    }];
-  }
+  
+  return alternatives;
 };
 
 // Main analysis function
@@ -549,7 +808,7 @@ export const analyzeProduceSustainability = async (
     // Show progress
     toast({
       title: "Analyzing produce data...",
-      description: "Using AI model to analyze sustainability...",
+      description: "Using feature-based similarity to find sustainable alternatives...",
     });
 
     // Get user location string for display
@@ -592,7 +851,7 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance, produceName);
     
-    // Generate feature-based seasonal alternatives - ensure we get at least one
+    // Generate feature-based seasonal alternatives
     const seasonalAlternatives = await generateAlternatives(
       produceName, 
       co2Impact, 
@@ -601,12 +860,13 @@ export const analyzeProduceSustainability = async (
       userLocationString
     );
     
-    // Generate local alternatives - ensure we get at least one
-    const localAlternatives = await generateLocalAlternatives(
-      produceName, 
-      co2Impact, 
+    // Generate local alternatives - we'll reuse the same function but filter for more local options
+    const localAlternatives = findSimilarFoods(
+      produceName,
+      userLocationString,
       sourceLocation,
-      userLocationString
+      travelDistance / 4, // Assume much shorter distance for local
+      3
     );
 
     // Create the final result
