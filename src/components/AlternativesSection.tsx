@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { AlternativeOption } from '../lib/mockData';
+import type { AlternativeOption } from '../services/bertService';
 import { Leaf, TrendingDown } from 'lucide-react';
 
 interface AlternativesSectionProps {
