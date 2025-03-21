@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import ProduceForm from '../components/ProduceForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
 import { Leaf } from 'lucide-react';
 import { type ProduceInfo, analyzeProduceSustainability } from '../services/bertService';
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +17,7 @@ const Index = () => {
     setError(null);
     
     try {
-      console.log("Analyzing produce sustainability with BERT model...");
+      console.log("Analyzing produce sustainability...");
       console.log("Form data:", formData);
       
       const data = await analyzeProduceSustainability(
@@ -25,10 +27,27 @@ const Index = () => {
       );
       
       console.log("Analysis results:", data);
+      console.log("Seasonal alternatives:", data.seasonalAlternatives);
+      console.log("Local alternatives:", data.localAlternatives);
+      
+      if (data.seasonalAlternatives.length === 0 && data.localAlternatives.length === 0) {
+        toast({
+          title: "No Alternatives Found",
+          description: "We couldn't find specific alternatives for this produce. Consider searching for a different item.",
+          variant: "default",
+        });
+      }
+      
       setResults(data);
     } catch (err) {
       console.error('Error analyzing produce:', err);
       setError('Failed to analyze the produce. Please try again.');
+      
+      toast({
+        title: "Analysis Error",
+        description: "There was a problem analyzing your produce. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

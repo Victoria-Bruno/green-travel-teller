@@ -2,6 +2,7 @@
 import React from 'react';
 import type { ProduceInfo } from '../services/bertService';
 import { Leaf, Route, Droplets, AlertCircle, ExternalLink, Info } from 'lucide-react';
+import AlternativesSection from './AlternativesSection';
 
 interface ResultsDisplayProps {
   data: ProduceInfo;
@@ -17,6 +18,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   };
   
   const impactData = getImpactLevel(data.co2Impact);
+  
+  // Check if we have any alternatives to display
+  const hasAlternatives = (
+    data.seasonalAlternatives?.length > 0 || 
+    data.localAlternatives?.length > 0
+  );
   
   return (
     <div className="space-y-6 animate-slide-up">
@@ -87,59 +94,25 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
         )}
       </div>
       
-      {(data.seasonalAlternatives.length > 0 || data.localAlternatives.length > 0) && (
+      {hasAlternatives && (
         <div className="glass-panel p-6">
           <h3 className="font-semibold text-lg text-gray-800 mb-4">More Sustainable Alternatives</h3>
           
-          {data.seasonalAlternatives.length > 0 && (
-            <div className="mb-4">
-              <h4 className="section-title">Seasonal Options</h4>
-              <div className="space-y-3">
-                {data.seasonalAlternatives.map((alt, index) => (
-                  <div key={index} className="p-3 bg-white/50 rounded-xl">
-                    <div className="flex items-start justify-between mb-1">
-                      <span className="font-medium text-gray-800">{alt.name}</span>
-                      <span className="text-green-600 text-sm font-medium">
-                        -{alt.distanceReduction}% CO<sub>2</sub>
-                      </span>
-                    </div>
-                    <ul className="text-xs text-gray-600 space-y-1">
-                      {alt.benefits.map((benefit, i) => (
-                        <li key={i} className="flex items-start gap-1.5">
-                          <Leaf className="w-3 h-3 text-sage-500 mt-0.5 flex-shrink-0" />
-                          <span>{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+          {data.seasonalAlternatives && data.seasonalAlternatives.length > 0 && (
+            <div className="mb-6">
+              <AlternativesSection 
+                title="Seasonal Options" 
+                alternatives={data.seasonalAlternatives} 
+              />
             </div>
           )}
           
-          {data.localAlternatives.length > 0 && (
+          {data.localAlternatives && data.localAlternatives.length > 0 && (
             <div>
-              <h4 className="section-title">Local Options</h4>
-              <div className="space-y-3">
-                {data.localAlternatives.map((alt, index) => (
-                  <div key={index} className="p-3 bg-white/50 rounded-xl">
-                    <div className="flex items-start justify-between mb-1">
-                      <span className="font-medium text-gray-800">{alt.name}</span>
-                      <span className="text-green-600 text-sm font-medium">
-                        -{alt.distanceReduction}% CO<sub>2</sub>
-                      </span>
-                    </div>
-                    <ul className="text-xs text-gray-600 space-y-1">
-                      {alt.benefits.map((benefit, i) => (
-                        <li key={i} className="flex items-start gap-1.5">
-                          <Leaf className="w-3 h-3 text-sage-500 mt-0.5 flex-shrink-0" />
-                          <span>{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+              <AlternativesSection 
+                title="Local Options" 
+                alternatives={data.localAlternatives} 
+              />
             </div>
           )}
         </div>
@@ -154,12 +127,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
         </button>
         
         <a 
-          href="https://www.europeanseasonalitycalendar.eu/"
+          href="https://www.seasonalfoodguide.org/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-sage-600 hover:text-sage-800 flex items-center gap-1 transition-colors"
         >
-          <span>Learn more about European seasonal produce</span>
+          <span>Learn more about seasonal food guides</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>

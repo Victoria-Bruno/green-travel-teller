@@ -9,7 +9,7 @@ interface AlternativesSectionProps {
 }
 
 const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, alternatives }) => {
-  if (alternatives.length === 0) {
+  if (!alternatives || alternatives.length === 0) {
     return null;
   }
 
@@ -24,7 +24,7 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
         {alternatives.map((alternative, index) => (
           <div 
             key={index}
-            className="bg-white/60 rounded-lg p-3 border border-sage-100"
+            className="bg-white/60 rounded-lg p-3 border border-sage-100 hover:border-sage-200 transition-all"
           >
             <div className="flex justify-between items-start mb-1">
               <span className="font-medium text-gray-800">{alternative.name}</span>
@@ -35,10 +35,10 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
             </div>
             
             <div className="text-xs text-gray-600 mt-1">
-              {alternative.benefits.map((benefit, i) => (
+              {alternative.benefits && alternative.benefits.map((benefit, i) => (
                 <p key={i} className="flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1 h-1 rounded-full bg-sage-400 inline-block" />
-                  {benefit}
+                  <span className="w-1 h-1 rounded-full bg-sage-400 inline-block flex-shrink-0" />
+                  <span>{benefit}</span>
                 </p>
               ))}
             </div>
