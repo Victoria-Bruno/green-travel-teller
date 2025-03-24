@@ -1,7 +1,7 @@
-
 import React from 'react';
-import type { AlternativeOption } from '../services/bertService';
+import type { AlternativeOption } from '../services/produceAIService';
 import { Leaf, TrendingDown, Heart, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AlternativesSectionProps {
   title: string;

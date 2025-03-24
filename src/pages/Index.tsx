@@ -4,7 +4,7 @@ import ProduceForm from '../components/ProduceForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
 import { Leaf } from 'lucide-react';
-import { type ProduceInfo, analyzeProduceSustainability } from '../services/bertService';
+import { type ProduceInfo, analyzeProduceSustainability } from '../services/produceAIService';
 import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
