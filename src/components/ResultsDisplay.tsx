@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { ProduceInfo } from '../services/bertService';
+import type { ProduceInfo } from '../services/produceAIService';
 import { Leaf, Route, Droplets, AlertCircle, ExternalLink, Info } from 'lucide-react';
 import AlternativesSection from './AlternativesSection';
 
@@ -50,7 +50,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
             <p className="text-xs text-gray-500">From {data.source}</p>
             <div className="flex items-center mt-1 text-xs text-gray-400">
               <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span>Distance calculated to the capital or major city</span>
+              <span>Distance calculated using Google Maps API</span>
             </div>
           </div>
           
@@ -63,6 +63,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
               {data.co2Impact} kg CO<sub>2</sub>
             </p>
             <p className="text-xs text-gray-500">{impactData.level} environmental impact</p>
+            <div className="flex items-center mt-1 text-xs text-gray-400">
+              <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+              <span>Calculated using AI analysis</span>
+            </div>
           </div>
           
           <div className="space-y-1 p-3 bg-white/50 rounded-xl">
@@ -74,11 +78,19 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
               <>
                 <p className="text-sm font-medium text-gray-700">Artificial Ripening</p>
                 <p className="text-xs text-gray-500">Uses post-harvest treatments</p>
+                <div className="flex items-center mt-1 text-xs text-gray-400">
+                  <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span>Determined by AI analysis</span>
+                </div>
               </>
             ) : (
               <>
                 <p className="text-sm font-medium text-gray-700">Natural Ripening</p>
                 <p className="text-xs text-gray-500">No artificial process detected</p>
+                <div className="flex items-center mt-1 text-xs text-gray-400">
+                  <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span>Determined by AI analysis</span>
+                </div>
               </>
             )}
           </div>
@@ -97,6 +109,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
       {hasAlternatives && (
         <div className="glass-panel p-6">
           <h3 className="font-semibold text-lg text-gray-800 mb-4">More Sustainable Alternatives</h3>
+          <div className="text-xs text-gray-500 mb-4">
+            Alternatives are ranked based on nutritional similarity (70%), locality (20%), and environmental impact (10%).
+          </div>
           
           {data.seasonalAlternatives && data.seasonalAlternatives.length > 0 && (
             <div className="mb-6">

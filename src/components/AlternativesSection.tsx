@@ -1,6 +1,7 @@
+
 import React from 'react';
 import type { AlternativeOption } from '../services/produceAIService';
-import { Leaf, TrendingDown, Heart, Info } from 'lucide-react';
+import { Leaf, TrendingDown, Heart, Info, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AlternativesSectionProps {
@@ -53,6 +54,11 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
                   <span>{benefit}</span>
                 </p>
               ))}
+            </div>
+            
+            <div className="mt-2 pt-2 border-t border-sage-100 flex items-center text-xs text-gray-500">
+              <Scale className="w-3 h-3 mr-1 text-sage-500" />
+              <span>Ranked using AI analysis</span>
             </div>
           </div>
         ))}
