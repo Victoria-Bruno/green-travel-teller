@@ -7,33 +7,15 @@ import { calculateDistance } from "./googleMapsService";
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-// Define simplified types
+// Simplified types for basic produce info
 export interface ProduceInfo {
   name: string;
   source: string;
   co2Impact: number;
   travelDistance: number;
   ripeningMethod: string;
-  isNaturalRipening: boolean;
-  nutritionalInfo: NutritionInfo;
+  rawAlternativesText: string; // Raw text from the LLM
   userLocation: string;
-  alternatives: AlternativeOption[];
-}
-
-export interface NutritionInfo {
-  calories: number;
-  protein: number;
-  carbs: number;
-  primaryVitamin: string;
-}
-
-export interface AlternativeOption {
-  name: string;
-  co2Impact: number;
-  distanceReduction: number;
-  benefits: string[];
-  nutritionalSimilarity?: string;
-  sustainabilityReason: string;
 }
 
 // Load AI model only when needed
@@ -48,7 +30,8 @@ const loadModel = async () => {
 
     // Set Hugging Face API token for authentication
     if (accessToken) {
-      env.accessToken = accessToken; // Fixed property name
+      // Use the env.setAccessToken method instead of directly setting a property
+      env.setAccessToken(accessToken);
     } else {
       throw new Error("Hugging Face token is missing");
     }
@@ -91,107 +74,47 @@ const calculateCO2Impact = (travelDistance: number): number => {
   }
 };
 
-// Simple function to get basic nutrition & ripening info
-const getBasicProduceInfo = async (
+// Generate ripening method info
+const getRipeningMethodInfo = async (
   produceName: string,
   generationModel: any
-): Promise<{nutritionInfo: NutritionInfo, ripeningMethod: string, isNaturalRipening: boolean}> => {
+): Promise<{ripeningMethod: string}> => {
   try {
     if (!generationModel) {
       throw new Error("AI model not available");
     }
 
-    // Create a prompt for the AI model
-    const prompt = `Provide information on ripening method and estimated nutrition values for ${produceName} in JSON format with keys: calories, protein, carbs, primaryVitamin, ripeningMethod.`;
+    // Simple prompt to get ripening method
+    const prompt = `How does ${produceName} ripen? (Natural or artificial)`;
 
     // Call the AI model
     const result = await generationModel(prompt, { 
-      max_length: 150,
+      max_length: 100,
       temperature: 0.7
     });
     
-    console.log("Raw AI response for nutrition:", result);
+    console.log("Raw AI response for ripening:", result);
     
     // Extract text from the response
     const generatedText = result[0]?.generated_text || "";
     
-    // Try to extract JSON from the response or use regex
-    let parsedData: any = {};
-    try {
-      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedData = JSON.parse(jsonMatch[0]);
-      } else {
-        // Extract values using regex as fallback
-        const caloriesMatch = generatedText.match(/calories[:\s]+(\d+)/i);
-        const proteinMatch = generatedText.match(/protein[:\s]+(\d+\.?\d*)/i);
-        const carbsMatch = generatedText.match(/carbs[:\s]+(\d+\.?\d*)/i);
-        const vitaminMatch = generatedText.match(/primaryVitamin[:\s]+"?([A-Za-z\s]+)"?/i) || 
-                            generatedText.match(/vitamin[:\s]+"?([A-Za-z\s]+)"?/i);
-        const ripeningMatch = generatedText.match(/ripeningMethod[:\s]+"?([A-Za-z\s]+)"?/i);
-        
-        parsedData = {
-          calories: caloriesMatch ? parseInt(caloriesMatch[1]) : 100,
-          protein: proteinMatch ? parseFloat(proteinMatch[1]) : 2,
-          carbs: carbsMatch ? parseFloat(carbsMatch[1]) : 15,
-          primaryVitamin: vitaminMatch ? vitaminMatch[1].trim() : "Vitamin C",
-          ripeningMethod: ripeningMatch ? ripeningMatch[1].trim() : "Natural"
-        };
-      }
-    } catch (e) {
-      console.error("Error parsing generated nutrition data:", e);
-      // Provide fallback values
-      parsedData = {
-        calories: 100,
-        protein: 2,
-        carbs: 15,
-        primaryVitamin: "Vitamin C",
-        ripeningMethod: "Natural"
-      };
-    }
-    
-    // Ensure we have all required fields with reasonable values
-    const nutritionInfo: NutritionInfo = {
-      calories: typeof parsedData.calories === 'number' ? parsedData.calories : 100,
-      protein: typeof parsedData.protein === 'number' ? parsedData.protein : 2,
-      carbs: typeof parsedData.carbs === 'number' ? parsedData.carbs : 15,
-      primaryVitamin: typeof parsedData.primaryVitamin === 'string' ? 
-        parsedData.primaryVitamin : "Vitamin C"
-    };
-    
-    const ripeningMethod = typeof parsedData.ripeningMethod === 'string' ? 
-      parsedData.ripeningMethod : "Natural";
-    
-    const isNaturalRipening = ripeningMethod.toLowerCase().includes("natural");
-
     return {
-      nutritionInfo,
-      ripeningMethod,
-      isNaturalRipening
+      ripeningMethod: generatedText
     };
   } catch (error) {
-    console.error("Error generating nutritional data:", error);
-    
-    // Return fallback values
+    console.error("Error getting ripening information:", error);
     return {
-      nutritionInfo: {
-        calories: 100,
-        protein: 2,
-        carbs: 15,
-        primaryVitamin: "Vitamin C"
-      },
-      ripeningMethod: "Natural",
-      isNaturalRipening: true
+      ripeningMethod: "Information not available"
     };
   }
 };
 
-// Generate sustainable alternatives - main function
+// Generate sustainable alternatives - main function that returns raw text
 const generateSustainableAlternatives = async (
   produceName: string,
   userLocation: string,
   generationModel: any
-): Promise<AlternativeOption[]> => {
+): Promise<string> => {
   try {
     if (!generationModel) {
       throw new Error("AI model not available");
@@ -199,8 +122,7 @@ const generateSustainableAlternatives = async (
 
     // Create a direct prompt for the AI model
     const prompt = `What are the top 3 most sustainable alternatives to ${produceName} for someone living in ${userLocation}? 
-    For each alternative, explain why it's more sustainable (lower emissions, less water usage, etc.) and 
-    what nutritional similarities it has to ${produceName}. Format as a numbered list.`;
+    For each alternative, explain why it's more sustainable (lower emissions, less water usage, etc.).`;
 
     // Call the AI model
     const result = await generationModel(prompt, { 
@@ -210,70 +132,13 @@ const generateSustainableAlternatives = async (
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Extract text from the response
-    const generatedText = result[0]?.generated_text || "";
+    // Return the raw generated text
+    return result[0]?.generated_text || 
+      `Unable to generate alternatives for ${produceName}. Please try again.`;
     
-    // Parse the alternatives from the generated text
-    const alternatives: AlternativeOption[] = [];
-    const blocks = generatedText.split(/\d+\./);
-    
-    // Process each numbered section
-    for (let i = 1; i < blocks.length && alternatives.length < 3; i++) {
-      const block = blocks[i].trim();
-      if (block.length === 0) continue;
-      
-      // Extract the product name - typically the first few words before a comma or period
-      const nameMatch = block.match(/^([A-Za-z\s]+)(?:[,.:;]|\s-)/);
-      let name = nameMatch ? nameMatch[1].trim() : `Alternative ${i}`;
-      
-      alternatives.push({
-        name: name,
-        co2Impact: 0.2 * i, // Simple approximation for demo
-        distanceReduction: Math.round(60 - (i * 10)), // 50-60% range
-        benefits: [
-          "More sustainably grown",
-          "Requires less resources",
-          "Lower carbon footprint"
-        ],
-        nutritionalSimilarity: `Similar nutritional profile to ${produceName}`,
-        sustainabilityReason: block // Use the entire block as the reason
-      });
-    }
-    
-    // If we couldn't extract enough options, add generic fallbacks
-    while (alternatives.length < 3) {
-      const i = alternatives.length + 1;
-      alternatives.push({
-        name: `Sustainable Alternative ${i}`,
-        co2Impact: 0.2 * i,
-        distanceReduction: Math.round(60 - (i * 10)),
-        benefits: [
-          "Generally more sustainable",
-          "Typically requires less transportation",
-          "Often grown with fewer pesticides"
-        ],
-        nutritionalSimilarity: `Alternative to ${produceName}`,
-        sustainabilityReason: `A more sustainable option that can often be grown closer to ${userLocation}`
-      });
-    }
-    
-    return alternatives;
   } catch (error) {
     console.error("Error generating sustainable alternatives:", error);
-    
-    // Return fallback options
-    return [1, 2, 3].map((i) => ({
-      name: `Alternative ${i}`,
-      co2Impact: 0.2 * i,
-      distanceReduction: 60 - (i * 10),
-      benefits: [
-        "Generally more sustainable",
-        "Typically requires less resources",
-        "Usually has a lower carbon footprint"
-      ],
-      nutritionalSimilarity: "Similar nutritional value",
-      sustainabilityReason: `A more sustainable alternative to ${produceName}`
-    }));
+    return `Error generating alternatives: ${error instanceof Error ? error.message : "Unknown error"}`;
   }
 };
 
@@ -342,32 +207,29 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance);
 
-    // Step 1: Get basic nutrition data and ripening method
-    const { nutritionInfo, ripeningMethod, isNaturalRipening } = 
-      await getBasicProduceInfo(produceName, generationModel);
+    // Get ripening method info
+    const { ripeningMethod } = await getRipeningMethodInfo(produceName, generationModel);
 
-    // Step 2: Get sustainable alternatives directly
-    const sustainableAlternatives = await generateSustainableAlternatives(
+    // Get sustainable alternatives as raw text
+    const rawAlternativesText = await generateSustainableAlternatives(
       produceName,
       userLocationString,
       generationModel
     );
 
-    // Create the final result
+    // Create the final result with raw text
     const result: ProduceInfo = {
       name: produceName,
       source: sourceLocation,
       co2Impact,
       travelDistance,
       ripeningMethod,
-      isNaturalRipening,
-      nutritionalInfo: nutritionInfo,
+      rawAlternativesText,
       userLocation: userLocationString,
-      alternatives: sustainableAlternatives
     };
 
     // Log the results to console for verification
-    console.log("Analysis complete:", result);
+    console.log("Analysis complete with raw alternatives text:", result);
 
     // Dismiss progress toast
     toast({

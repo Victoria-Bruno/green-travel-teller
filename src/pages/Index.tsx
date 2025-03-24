@@ -28,10 +28,10 @@ const Index = () => {
       
       console.log("Analysis results:", data);
       
-      if (data.alternatives.length === 0) {
+      if (!data.rawAlternativesText || data.rawAlternativesText.trim() === '') {
         toast({
           title: "No Alternatives Found",
-          description: "We couldn't find specific alternatives for this produce. Consider searching for a different item.",
+          description: "We couldn't find alternatives for this produce. Consider searching for a different item.",
           variant: "default",
         });
       }
