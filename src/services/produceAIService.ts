@@ -30,8 +30,8 @@ const loadModel = async () => {
 
     // Set Hugging Face API token for authentication
     if (accessToken) {
-      // Use the env.setAccessToken method instead of directly setting a property
-      env.setAccessToken(accessToken);
+      // Use the env.ACCESS_TOKEN property instead of setAccessToken
+      env.ACCESS_TOKEN = accessToken;
     } else {
       throw new Error("Hugging Face token is missing");
     }
@@ -78,7 +78,7 @@ const calculateCO2Impact = (travelDistance: number): number => {
 const getRipeningMethodInfo = async (
   produceName: string,
   generationModel: any
-): Promise<{ripeningMethod: string}> => {
+): Promise<string> => {
   try {
     if (!generationModel) {
       throw new Error("AI model not available");
@@ -98,14 +98,10 @@ const getRipeningMethodInfo = async (
     // Extract text from the response
     const generatedText = result[0]?.generated_text || "";
     
-    return {
-      ripeningMethod: generatedText
-    };
+    return generatedText;
   } catch (error) {
     console.error("Error getting ripening information:", error);
-    return {
-      ripeningMethod: "Information not available"
-    };
+    return "Information not available";
   }
 };
 
@@ -207,8 +203,8 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance);
 
-    // Get ripening method info
-    const { ripeningMethod } = await getRipeningMethodInfo(produceName, generationModel);
+    // Get ripening method info - Now storing the raw text
+    const ripeningMethod = await getRipeningMethodInfo(produceName, generationModel);
 
     // Get sustainable alternatives as raw text
     const rawAlternativesText = await generateSustainableAlternatives(

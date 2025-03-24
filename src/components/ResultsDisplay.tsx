@@ -81,24 +81,24 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
           <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-100">
             <h3 className="text-md font-medium text-gray-700 mb-2">Ripening Method Information:</h3>
             <div className="whitespace-pre-wrap text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 max-h-[200px] overflow-y-auto">
-              {data.ripeningMethod}
+              {data.ripeningMethod || "No ripening information available"}
             </div>
           </div>
         </CardContent>
       </Card>
       
-      {/* Raw Alternatives Text */}
+      {/* Sustainable Alternatives Section */}
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg text-gray-800">Sustainable Alternatives (AI Generated)</CardTitle>
+          <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
           <CardDescription>
-            Raw output from the AI model on alternatives to {data.name}
+            AI-generated alternatives to {data.name} for your location
           </CardDescription>
         </CardHeader>
         
         <CardContent>
           <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700 text-sm max-h-[400px] overflow-y-auto">
-            {data.rawAlternativesText}
+            {data.rawAlternativesText || "No alternatives available"}
           </div>
         </CardContent>
       </Card>

@@ -28,6 +28,7 @@ const Index = () => {
       
       console.log("Analysis results:", data);
       
+      // Check if alternatives were generated successfully
       if (!data.rawAlternativesText || data.rawAlternativesText.trim() === '') {
         toast({
           title: "No Alternatives Found",
