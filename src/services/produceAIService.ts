@@ -31,7 +31,7 @@ const loadModel = async () => {
     // Set Hugging Face API token for authentication
     if (accessToken) {
       // Using env.setAccessToken method to set the token
-      env.setAccessToken(accessToken);
+      env.accessToken = accessToken; // Fixed property name
     } else {
       throw new Error("Hugging Face token is missing");
     }
