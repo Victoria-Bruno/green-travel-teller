@@ -19,6 +19,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   
   const impactData = getImpactLevel(data.co2Impact);
   
+  console.log("ResultsDisplay rendering with data:", data);
+  console.log("Alternatives text:", data.rawAlternativesText);
+  console.log("Ripening text:", data.ripeningMethod);
+  
   return (
     <div className="space-y-6 animate-slide-up">
       <Card className="shadow-md">

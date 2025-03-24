@@ -30,8 +30,8 @@ const loadModel = async () => {
 
     // Set Hugging Face API token for authentication
     if (accessToken) {
-      // Use the env.ACCESS_TOKEN property instead of setAccessToken
-      env.ACCESS_TOKEN = accessToken;
+      // Using env.setAccessToken method to set the token
+      env.setAccessToken(accessToken);
     } else {
       throw new Error("Hugging Face token is missing");
     }
@@ -42,6 +42,7 @@ const loadModel = async () => {
       "Xenova/distilgpt2"  // Using a smaller, supported model
     );
     
+    console.log("Model loaded successfully:", model !== null);
     return model;
   } catch (error) {
     console.error("Error loading AI model:", error);
@@ -87,6 +88,8 @@ const getRipeningMethodInfo = async (
     // Simple prompt to get ripening method
     const prompt = `How does ${produceName} ripen? (Natural or artificial)`;
 
+    console.log("Generating ripening info with prompt:", prompt);
+    
     // Call the AI model
     const result = await generationModel(prompt, { 
       max_length: 100,
@@ -95,13 +98,17 @@ const getRipeningMethodInfo = async (
     
     console.log("Raw AI response for ripening:", result);
     
-    // Extract text from the response
-    const generatedText = result[0]?.generated_text || "";
+    // Extract text from the response and ensure it's not empty
+    const generatedText = result && result[0]?.generated_text 
+      ? result[0].generated_text.replace(prompt, "").trim() 
+      : "Information not available";
     
-    return generatedText;
+    console.log("Extracted ripening text:", generatedText);
+    
+    return generatedText || "Information not available";
   } catch (error) {
     console.error("Error getting ripening information:", error);
-    return "Information not available";
+    return "Information not available due to an error.";
   }
 };
 
@@ -120,6 +127,8 @@ const generateSustainableAlternatives = async (
     const prompt = `What are the top 3 most sustainable alternatives to ${produceName} for someone living in ${userLocation}? 
     For each alternative, explain why it's more sustainable (lower emissions, less water usage, etc.).`;
 
+    console.log("Generating alternatives with prompt:", prompt);
+    
     // Call the AI model
     const result = await generationModel(prompt, { 
       max_length: 350,
@@ -128,9 +137,14 @@ const generateSustainableAlternatives = async (
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Return the raw generated text
-    return result[0]?.generated_text || 
-      `Unable to generate alternatives for ${produceName}. Please try again.`;
+    // Extract the generated text and ensure it's not empty
+    const generatedText = result && result[0]?.generated_text 
+      ? result[0].generated_text.replace(prompt, "").trim() 
+      : "Unable to generate alternatives.";
+    
+    console.log("Extracted alternatives text:", generatedText);
+    
+    return generatedText || `Unable to generate alternatives for ${produceName}. Please try again.`;
     
   } catch (error) {
     console.error("Error generating sustainable alternatives:", error);
@@ -219,8 +233,8 @@ export const analyzeProduceSustainability = async (
       source: sourceLocation,
       co2Impact,
       travelDistance,
-      ripeningMethod,
-      rawAlternativesText,
+      ripeningMethod: ripeningMethod || "No ripening information available",
+      rawAlternativesText: rawAlternativesText || "No alternatives available",
       userLocation: userLocationString,
     };
 
