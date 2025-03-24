@@ -27,10 +27,8 @@ const Index = () => {
       );
       
       console.log("Analysis results:", data);
-      console.log("Seasonal alternatives:", data.seasonalAlternatives);
-      console.log("Local alternatives:", data.localAlternatives);
       
-      if (data.seasonalAlternatives.length === 0 && data.localAlternatives.length === 0) {
+      if (data.alternatives.length === 0) {
         toast({
           title: "No Alternatives Found",
           description: "We couldn't find specific alternatives for this produce. Consider searching for a different item.",
