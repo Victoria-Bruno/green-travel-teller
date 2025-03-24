@@ -48,12 +48,16 @@ const AlternativesSection: React.FC<AlternativesSectionProps> = ({ title, altern
                 <Info className="w-3 h-3 text-sage-600 mt-0.5 flex-shrink-0" />
                 <span className="font-medium">Why this is a good alternative:</span>
               </div>
-              {alternative.benefits && alternative.benefits.map((benefit, i) => (
-                <p key={i} className="flex items-center gap-1.5 mt-1 ml-4">
-                  <span className="w-1 h-1 rounded-full bg-sage-400 inline-block flex-shrink-0" />
-                  <span>{benefit}</span>
-                </p>
-              ))}
+              {alternative.benefits && alternative.benefits.length > 0 && (
+                <>
+                  {alternative.benefits.map((benefit, i) => (
+                    <p key={i} className="flex items-center gap-1.5 mt-1 ml-4">
+                      <span className="w-1 h-1 rounded-full bg-sage-400 inline-block flex-shrink-0" />
+                      <span>{benefit}</span>
+                    </p>
+                  ))}
+                </>
+              )}
             </div>
             
             <div className="mt-2 pt-2 border-t border-sage-100 flex items-center text-xs text-gray-500">

@@ -36,64 +36,6 @@ interface NutritionFeatures {
   vitamins: string[];
 }
 
-// Initialize model
-let aiModel: any = null;
-let isModelLoading = false;
-
-// Load AI model - we use a text classification model for our analysis
-const loadAIModel = async () => {
-  if (aiModel) return aiModel;
-  
-  if (isModelLoading) {
-    // Wait for model to finish loading if already in progress
-    while (isModelLoading) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return aiModel;
-  }
-  
-  try {
-    isModelLoading = true;
-    toast({
-      title: "Loading AI Model",
-      description: "This may take a moment...",
-    });
-    
-    // Use a reliable model for text classification
-    aiModel = await pipeline(
-      'text-classification',
-      'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
-    );
-    
-    isModelLoading = false;
-    return aiModel;
-  } catch (error) {
-    console.error('Error loading AI model:', error);
-    isModelLoading = false;
-    toast({
-      title: "Model Loading Error",
-      description: "Could not load AI model. Using simplified analysis.",
-      variant: "destructive",
-    });
-    
-    // Create a simple mock model for fallback
-    aiModel = {
-      async __call__(text: string) {
-        console.log("Using simplified AI analysis with query:", text);
-        // Simple analysis
-        if (text.toLowerCase().includes('sustainable') || 
-            text.toLowerCase().includes('local') || 
-            text.toLowerCase().includes('alternative')) {
-          return [{ label: 'POSITIVE', score: 0.9 }];
-        }
-        return [{ label: 'NEGATIVE', score: 0.6 }];
-      }
-    };
-    
-    return aiModel;
-  }
-};
-
 // Utility function to calculate cosine similarity between two vectors
 const cosineSimilarity = (vectorA: number[], vectorB: number[]): number => {
   try {
@@ -128,11 +70,48 @@ const cosineSimilarity = (vectorA: number[], vectorB: number[]): number => {
   }
 };
 
-// Extract nutrition features from produce name using AI
-const extractNutritionFeatures = async (produceName: string): Promise<NutritionFeatures> => {
+// Load AI model
+const loadModel = async () => {
   try {
-    const model = await loadAIModel();
+    toast({
+      title: "Loading AI Model",
+      description: "This may take a moment...",
+    });
     
+    // Use a smaller, more reliable model for text classification
+    const model = await pipeline(
+      'text-classification',
+      'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+    );
+    
+    return model;
+  } catch (error) {
+    console.error('Error loading AI model:', error);
+    toast({
+      title: "Model Loading Error",
+      description: "Could not load AI model. Using simplified analysis.",
+      variant: "destructive",
+    });
+    
+    // Create a simple mock model for fallback
+    return {
+      async __call__(text: string) {
+        console.log("Using simplified AI analysis with query:", text);
+        // Simple analysis
+        if (text.toLowerCase().includes('sustainable') || 
+            text.toLowerCase().includes('local') || 
+            text.toLowerCase().includes('alternative')) {
+          return [{ label: 'POSITIVE', score: 0.9 }];
+        }
+        return [{ label: 'NEGATIVE', score: 0.6 }];
+      }
+    };
+  }
+};
+
+// Extract nutrition features from produce name using AI
+const extractNutritionFeatures = async (produceName: string, model: any): Promise<NutritionFeatures> => {
+  try {
     // Generate a prompt for the model
     const prompt = `Nutrition information for ${produceName}`;
     
@@ -206,11 +185,8 @@ const determineVitamins = (produceName: string): string[] => {
 };
 
 // Determine ripening method using AI
-const determineRipeningMethod = async (produceName: string, sourceLocation: string, travelDistance: number): Promise<string | null> => {
+const determineRipeningMethod = async (produceName: string, sourceLocation: string, travelDistance: number, model: any): Promise<string | null> => {
   try {
-    // Load the model
-    const model = await loadAIModel();
-    
     // Create prompts for the AI model
     const artificialRipeningPrompt = `${produceName} from ${sourceLocation} is artificially ripened`;
     const naturalRipeningPrompt = `${produceName} from ${sourceLocation} is naturally ripened`;
@@ -240,11 +216,8 @@ const determineRipeningMethod = async (produceName: string, sourceLocation: stri
 };
 
 // Calculate CO2 impact based on travel distance and produce type using AI
-const calculateCO2Impact = async (produceName: string, travelDistance: number): Promise<number> => {
+const calculateCO2Impact = async (produceName: string, travelDistance: number, model: any): Promise<number> => {
   try {
-    // Load the model
-    const model = await loadAIModel();
-    
     // Create a prompt for the AI model
     const prompt = `${produceName} traveled ${travelDistance} km and has high environmental impact`;
     
@@ -261,7 +234,7 @@ const calculateCO2Impact = async (produceName: string, travelDistance: number): 
     const transportEmissions = distanceFactor * confidenceScore * 2; // Scale by confidence and multiplier
     
     // Add produce-specific factor based on perishability
-    const produceFactor = await determineProduceFactor(produceName);
+    const produceFactor = await determineProduceFactor(produceName, model);
     
     // Calculate total emissions (rounded to 2 decimal places)
     return parseFloat((baseCO2 + transportEmissions + produceFactor).toFixed(2));
@@ -273,10 +246,8 @@ const calculateCO2Impact = async (produceName: string, travelDistance: number): 
 };
 
 // Helper function to determine produce-specific CO2 factor
-const determineProduceFactor = async (produceName: string): Promise<number> => {
+const determineProduceFactor = async (produceName: string, model: any): Promise<number> => {
   try {
-    const model = await loadAIModel();
-    
     // Create prompts related to produce characteristics
     const perishablePrompt = `${produceName} is highly perishable`;
     const energyIntensivePrompt = `${produceName} requires refrigeration`;
@@ -298,11 +269,8 @@ const determineProduceFactor = async (produceName: string): Promise<number> => {
 };
 
 // Determine if produce is in season based on location and time of year using AI
-const determineIfInSeason = async (produceName: string, userLocation: string): Promise<boolean> => {
+const determineIfInSeason = async (produceName: string, userLocation: string, model: any): Promise<boolean> => {
   try {
-    // Load the model
-    const model = await loadAIModel();
-    
     // Get current month
     const currentMonth = new Date().getMonth(); // 0-11
     const monthName = [
@@ -360,154 +328,29 @@ const isNorthernHemisphere = (location: string): boolean => {
   ];
   
   const lowerLocation = location.toLowerCase();
-  return !southernLocations.some(place => lowerLocation.includes(place));
-};
-
-// Generate alternatives using multi-objective ranking and AI approach
-const generateAlternatives = async (
-  produceName: string,
-  co2Impact: number,
-  travelDistance: number,
-  sourceLocation: string,
-  userLocation: string
-): Promise<AlternativeOption[]> => {
-  try {
-    // Load the model
-    const model = await loadAIModel();
-    
-    // Extract nutritional features for the base produce
-    const nutritionFeatures = await extractNutritionFeatures(produceName);
-    
-    // Convert to feature vector for similarity calculation
-    const baseFeatureVector = [
-      nutritionFeatures.calories / 100, // normalize
-      nutritionFeatures.protein / 10,   // normalize
-      nutritionFeatures.carbs / 30,     // normalize
-      nutritionFeatures.fat / 10        // normalize
-    ];
-    
-    // Use the AI model to generate alternative produce options
-    // The model helps us determine suitable alternatives
-    const alternativesPromises = [
-      generateAlternative(model, produceName, "apple", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "pear", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "banana", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "broccoli", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "spinach", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "potato", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "carrot", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "tomato", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "strawberry", baseFeatureVector, travelDistance, userLocation),
-      generateAlternative(model, produceName, "lettuce", baseFeatureVector, travelDistance, userLocation)
-    ];
-    
-    // Wait for all alternatives to be evaluated
-    const alternatives = await Promise.all(alternativesPromises);
-    
-    // Sort alternatives by the weighted score
-    const sortedAlternatives = alternatives
-      .filter(alt => alt !== null)
-      .sort((a, b) => b!.weightedScore - a!.weightedScore)
-      .slice(0, 6); // Get top 6
-    
-    console.log("Top alternatives found:", sortedAlternatives);
-    
-    // Format the alternatives for display
-    return sortedAlternatives.map(alt => {
-      if (!alt) return null;
-      
-      // Generate custom benefits based on scores
-      const benefits = [];
-      
-      if (alt.localityScore > 0.7) {
-        benefits.push(`Can be grown locally in ${userLocation}`);
-      }
-      
-      if (alt.co2Impact < co2Impact) {
-        benefits.push(`Lower carbon footprint than imported ${produceName}`);
-      }
-      
-      if (alt.distanceReduction > 50) {
-        benefits.push(`Reduces transport emissions by ${alt.distanceReduction}%`);
-      }
-      
-      // Add nutritional comparison
-      let nutritionalComparison = "";
-      if (alt.similarityScore > 0.8) {
-        nutritionalComparison = `Very similar nutritional profile to ${produceName}`;
-      } else if (alt.similarityScore > 0.6) {
-        nutritionalComparison = `Similar key nutrients to ${produceName}`;
-      } else {
-        nutritionalComparison = `Complementary nutritional profile to ${produceName}`;
-      }
-      
-      // Ensure we have at least one benefit
-      if (benefits.length === 0) {
-        benefits.push(`More sustainable alternative to ${produceName}`);
-      }
-      
-      return {
-        name: alt.name,
-        co2Impact: alt.co2Impact,
-        distanceReduction: alt.distanceReduction,
-        nutritionalSimilarity: nutritionalComparison,
-        benefits
-      };
-    }).filter(Boolean) as AlternativeOption[]; // Filter out any null values
-  } catch (error) {
-    console.error("Error generating alternatives:", error);
-    // Provide a simple fallback
-    return [
-      {
-        name: "Local seasonal produce",
-        co2Impact: co2Impact * 0.5,
-        distanceReduction: 50,
-        nutritionalSimilarity: "Varies by selection",
-        benefits: [
-          "Reduced transportation emissions",
-          "Generally fresher with higher nutritional value",
-          "Supports local food systems"
-        ]
-      }
-    ];
+  
+  // Check if the location name includes any of the southern hemisphere location names
+  for (const place of southernLocations) {
+    if (lowerLocation.includes(place)) {
+      return false;
+    }
   }
+  
+  return true;
 };
 
-// Generate and evaluate a single alternative using AI
-const generateAlternative = async (
+// Generate a single alternative
+const generateSingleAlternative = async (
   model: any,
+  alternateName: string,
   originalProduce: string,
-  alternativeName: string,
   originalNutrition: number[],
-  originalDistance: number,
+  travelDistance: number,
   userLocation: string
-): Promise<{
-  name: string;
-  similarityScore: number;
-  localityScore: number;
-  environmentalScore: number;
-  weightedScore: number;
-  co2Impact: number;
-  distanceReduction: number;
-} | null> => {
+): Promise<AlternativeOption | null> => {
   try {
-    // Skip if the alternative is the same as the original
-    if (alternativeName.toLowerCase() === originalProduce.toLowerCase()) {
-      return null;
-    }
-    
-    // 1. Query the model to see if this is a good alternative
-    const prompt = `${alternativeName} is a good alternative to ${originalProduce}`;
-    const result = await model(prompt);
-    const isGoodAlternative = result[0].label === 'POSITIVE';
-    
-    // If model strongly says it's not a good alternative, skip
-    if (!isGoodAlternative && result[0].score > 0.7) {
-      return null;
-    }
-    
-    // 2. Extract nutritional information for this alternative
-    const nutrition = await extractNutritionFeatures(alternativeName);
+    // Extract nutritional features for this alternative
+    const nutrition = await extractNutritionFeatures(alternateName, model);
     
     // Create feature vector
     const alternativeVector = [
@@ -517,44 +360,153 @@ const generateAlternative = async (
       nutrition.fat / 10
     ];
     
-    // 3. Calculate nutritional similarity (70% weight)
+    // Calculate nutritional similarity (70% weight)
     const similarityScore = cosineSimilarity(originalNutrition, alternativeVector);
     
-    // 4. Determine locality score (20% weight)
+    // Determine locality score (20% weight)
     // Use AI to determine if this produce is local to user's location
-    const localPrompt = `${alternativeName} is grown locally in ${userLocation}`;
+    const localPrompt = `${alternateName} is grown locally in ${userLocation}`;
     const localResult = await model(localPrompt);
-    const localityConfidence = localResult[0].label === 'POSITIVE' ? localResult[0].score : 1 - localResult[0].score;
-    const localityScore = localityConfidence;
+    const localityScore = localResult[0].label === 'POSITIVE' ? localResult[0].score : 1 - localResult[0].score;
     
-    // 5. Calculate environmental impact score (10% weight)
+    // Calculate environmental impact score (10% weight)
     // Estimate a reduced distance for local alternative
-    const estimatedDistance = originalDistance * (1 - localityScore * 0.8);
-    const co2Impact = await calculateCO2Impact(alternativeName, estimatedDistance);
-    const distanceReduction = Math.round((originalDistance - estimatedDistance) / originalDistance * 100);
+    const estimatedDistance = travelDistance * (1 - localityScore * 0.8);
+    const co2Impact = await calculateCO2Impact(alternateName, estimatedDistance, model);
+    const distanceReduction = Math.round((travelDistance - estimatedDistance) / travelDistance * 100);
     
     // Environmental score is better when CO2 impact is lower
-    const environmentalScore = Math.max(0, Math.min(1, 1 - (co2Impact / (originalDistance * 0.001))));
+    const environmentalScore = Math.max(0, Math.min(1, 1 - (co2Impact / (travelDistance * 0.001))));
     
-    // 6. Calculate the final weighted score
+    // Calculate the final weighted score
     // 70% nutritional similarity, 20% locality, 10% environmental impact
     const weightedScore = 
       (similarityScore * 0.7) + 
       (localityScore * 0.2) + 
       (environmentalScore * 0.1);
     
+    // Generate benefits based on scores
+    const benefits = [];
+    
+    if (localityScore > 0.6) {
+      benefits.push(`Can be grown locally in ${userLocation}`);
+    }
+    
+    if (co2Impact < travelDistance * 0.001) {
+      benefits.push(`Lower carbon footprint than imported ${originalProduce}`);
+    }
+    
+    if (distanceReduction > 40) {
+      benefits.push(`Reduces transport emissions by ${distanceReduction}%`);
+    }
+    
+    // Add nutritional comparison
+    let nutritionalSimilarity = "";
+    if (similarityScore > 0.8) {
+      nutritionalSimilarity = `Very similar nutritional profile to ${originalProduce}`;
+    } else if (similarityScore > 0.6) {
+      nutritionalSimilarity = `Similar key nutrients to ${originalProduce}`;
+    } else {
+      nutritionalSimilarity = `Complementary nutritional profile to ${originalProduce}`;
+    }
+    
+    // Ensure we have at least one benefit
+    if (benefits.length === 0) {
+      benefits.push(`More sustainable alternative to ${originalProduce}`);
+    }
+    
     return {
-      name: alternativeName,
-      similarityScore,
-      localityScore,
-      environmentalScore,
-      weightedScore,
-      co2Impact,
-      distanceReduction
+      name: alternateName,
+      co2Impact: co2Impact,
+      distanceReduction: distanceReduction,
+      benefits: benefits,
+      nutritionalSimilarity: nutritionalSimilarity
     };
   } catch (error) {
-    console.error(`Error generating alternative for ${alternativeName}:`, error);
+    console.error(`Error generating alternative for ${alternateName}:`, error);
     return null;
+  }
+};
+
+// Generate alternatives using multi-objective ranking
+const generateAlternatives = async (
+  produceName: string,
+  co2Impact: number,
+  travelDistance: number,
+  sourceLocation: string,
+  userLocation: string,
+  model: any
+): Promise<AlternativeOption[]> => {
+  try {
+    // Extract nutritional features for the base produce
+    const nutritionFeatures = await extractNutritionFeatures(produceName, model);
+    
+    // Convert to feature vector for similarity calculation
+    const baseFeatureVector = [
+      nutritionFeatures.calories / 100, // normalize
+      nutritionFeatures.protein / 10,   // normalize
+      nutritionFeatures.carbs / 30,     // normalize
+      nutritionFeatures.fat / 10        // normalize
+    ];
+    
+    // List of possible alternatives to evaluate
+    const possibleAlternatives = [
+      "apple", "pear", "banana", "orange", "kiwi", 
+      "broccoli", "spinach", "kale", "lettuce", "carrot", 
+      "potato", "sweet potato", "tomato", "cucumber", "bell pepper"
+    ].filter(alt => alt.toLowerCase() !== produceName.toLowerCase());
+    
+    // Shuffle the array to get a random selection
+    for (let i = possibleAlternatives.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [possibleAlternatives[i], possibleAlternatives[j]] = [possibleAlternatives[j], possibleAlternatives[i]];
+    }
+    
+    // Take just 5 random alternatives to reduce computation
+    const selectedAlternatives = possibleAlternatives.slice(0, 5);
+    
+    // Process alternatives sequentially to avoid session conflicts
+    const results: AlternativeOption[] = [];
+    
+    for (const alternative of selectedAlternatives) {
+      try {
+        const result = await generateSingleAlternative(
+          model, 
+          alternative, 
+          produceName, 
+          baseFeatureVector, 
+          travelDistance, 
+          userLocation
+        );
+        
+        if (result) {
+          results.push(result);
+        }
+      } catch (error) {
+        console.error(`Error processing alternative ${alternative}:`, error);
+        // Continue with next alternative
+      }
+    }
+    
+    // Sort by distance reduction (higher is better)
+    results.sort((a, b) => b.distanceReduction - a.distanceReduction);
+    
+    return results;
+  } catch (error) {
+    console.error("Error generating alternatives:", error);
+    
+    // Provide a simple fallback
+    return [{
+      name: "Local seasonal produce",
+      co2Impact: co2Impact * 0.5,
+      distanceReduction: 50,
+      nutritionalSimilarity: "Varies by selection",
+      benefits: [
+        "Reduced transportation emissions",
+        "Generally fresher with higher nutritional value",
+        "Supports local food systems"
+      ]
+    }];
   }
 };
 
@@ -575,6 +527,9 @@ export const analyzeProduceSustainability = async (
     const userLocationString = userLocation.city && userLocation.country 
       ? `${userLocation.city}, ${userLocation.country}`
       : userLocation.city || userLocation.country || "your location";
+    
+    // Load the AI model
+    const model = await loadModel();
     
     // Calculate travel distance
     toast({
@@ -604,13 +559,13 @@ export const analyzeProduceSustainability = async (
     const travelDistance = await calculateDistance(sourceLocation, userCoords);
     
     // Calculate CO2 impact using AI
-    const co2Impact = await calculateCO2Impact(produceName, travelDistance);
+    const co2Impact = await calculateCO2Impact(produceName, travelDistance, model);
     
     // Determine if produce is in season using AI
-    const inSeason = await determineIfInSeason(produceName, userLocationString);
+    const inSeason = await determineIfInSeason(produceName, userLocationString, model);
     
     // Determine ripening method using AI
-    const ripeningMethod = await determineRipeningMethod(produceName, sourceLocation, travelDistance);
+    const ripeningMethod = await determineRipeningMethod(produceName, sourceLocation, travelDistance, model);
     
     // Generate alternatives using multi-objective ranking with AI
     const allAlternatives = await generateAlternatives(
@@ -618,13 +573,15 @@ export const analyzeProduceSustainability = async (
       co2Impact,
       travelDistance,
       sourceLocation,
-      userLocationString
+      userLocationString,
+      model
     );
     
     // Separate into seasonal and local alternatives
-    // We'll use the top 3 for seasonal and the next 3 for local
-    const seasonalAlternatives = allAlternatives.slice(0, 3);
-    const localAlternatives = allAlternatives.slice(3, 6);
+    // We'll use the top 2 for seasonal and the next 2 for local
+    const halfPoint = Math.floor(allAlternatives.length / 2);
+    const seasonalAlternatives = allAlternatives.slice(0, halfPoint);
+    const localAlternatives = allAlternatives.slice(halfPoint);
 
     // Create the final result
     const result: ProduceInfo = {
