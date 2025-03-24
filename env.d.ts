@@ -1,5 +1,6 @@
+
 interface ImportMetaEnv {
-  readonly HUGGING_FACE_TOKEN: string;
+  readonly VITE_HUGGING_FACE_TOKEN: string;
 }
 
 interface ImportMeta {
