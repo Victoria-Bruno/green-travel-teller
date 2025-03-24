@@ -126,12 +126,11 @@ const extractNutritionFeatures = async (
     }
 
     // Create a simplified prompt for a smaller text generation model
-    const prompt = `Nutrition facts for ${produceName}: calories=`;
+    const prompt = `Provide estimated nutrition facts for ${produceName} in JSON format with keys: calories, protein, carbs, fat, vitamins (as an array).`;
 
     // Call the AI model with a shorter expected response
     const result = await model(prompt, { 
-      max_length: 50,
-      temperature: 0.7
+      max_length: 50
     });
 
     console.log("Raw AI response for nutrition:", result);
@@ -145,6 +144,7 @@ const extractNutritionFeatures = async (
     const proteinMatch = generatedText.match(/protein=(\d+\.?\d*)/i);
     const carbsMatch = generatedText.match(/carbs=(\d+\.?\d*)/i);
     const fatMatch = generatedText.match(/fat=(\d+\.?\d*)/i);
+    // const vitaminsMatch = generatedText.match(/vitamins=(\d+\.?\d*)/i);
     
     // Default values with some randomness for variety
     const randomFactor = Math.random() * 0.3 + 0.85; // 0.85-1.15 range
