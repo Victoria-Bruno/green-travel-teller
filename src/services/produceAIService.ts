@@ -1,7 +1,7 @@
 
 import { toast } from "@/components/ui/use-toast";
 import { pipeline, env } from "@huggingface/transformers";
-import { calculateDistance } from "./googleMapsService";
+import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
 
 // Configure transformers.js to use browser cache
 env.allowLocalModels = false;
@@ -36,14 +36,14 @@ const loadModel = async () => {
       throw new Error("Hugging Face token is missing");
     }
 
-    console.log("Loading text generation model...");
-    const model = await pipeline(
+   console.log("Loading text generation model...");
+    const generationModel = await pipeline(
       "text-generation", 
       "Xenova/distilgpt2"  // Using a smaller, supported model
     );
     
-    console.log("Model loaded successfully:", model !== null);
-    return model;
+    console.log("Model loaded successfully:", generationModel !== null);
+    return generationModel;
   } catch (error) {
     console.error("Error loading AI model:", error);
     toast({
@@ -78,7 +78,8 @@ const calculateCO2Impact = (travelDistance: number): number => {
 // Generate ripening method info
 const getRipeningMethodInfo = async (
   produceName: string,
-  generationModel: any
+  userLocation: string,
+  generationModel: any,
 ): Promise<string> => {
   try {
     if (!generationModel) {
@@ -86,7 +87,7 @@ const getRipeningMethodInfo = async (
     }
 
     // Simple prompt to get ripening method
-    const prompt = `How does ${produceName} ripen? (Natural or artificial)`;
+    const prompt = `How does ${produceName} ripen in ${userLocation}?`;
 
     console.log("Generating ripening info with prompt:", prompt);
     
@@ -99,9 +100,11 @@ const getRipeningMethodInfo = async (
     console.log("Raw AI response for ripening:", result);
     
     // Extract text from the response and ensure it's not empty
-    const generatedText = result && result[0]?.generated_text 
-      ? result[0].generated_text.replace(prompt, "").trim() 
-      : "Information not available";
+    // const generatedText = result && result[0]?.generated_text 
+    //   ? result[0].generated_text.replace(prompt, "").trim() 
+    //   : "Information not available";
+
+      const generatedText = result?.[0]?.generated_text?.trim() || "Information not available";
     
     console.log("Extracted ripening text:", generatedText);
     
@@ -133,14 +136,17 @@ const generateSustainableAlternatives = async (
     const result = await generationModel(prompt, { 
       max_length: 350,
       temperature: 0.7
-    });
+    }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
     // Extract the generated text and ensure it's not empty
-    const generatedText = result && result[0]?.generated_text 
-      ? result[0].generated_text.replace(prompt, "").trim() 
-      : "Unable to generate alternatives.";
+    // const generatedText = result && result[0]?.generated_text 
+    //   ? result[0].generated_text.replace(prompt, "").trim() 
+    //   : "Unable to generate alternatives.";
+
+    const generatedText = result?.[0]?.generated_text?.trim() || "Information not available";
+
     
     console.log("Extracted alternatives text:", generatedText);
     
@@ -218,7 +224,7 @@ export const analyzeProduceSustainability = async (
     const co2Impact = calculateCO2Impact(travelDistance);
 
     // Get ripening method info - Now storing the raw text
-    const ripeningMethod = await getRipeningMethodInfo(produceName, generationModel);
+    const ripeningMethod = await getRipeningMethodInfo(produceName,  userLocationString, generationModel);
 
     // Get sustainable alternatives as raw text
     const rawAlternativesText = await generateSustainableAlternatives(
