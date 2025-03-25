@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 import { pipeline, env } from "@huggingface/transformers";
 import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
@@ -31,8 +30,11 @@ const loadModel = async () => {
     if (!accessToken) {
       throw new Error("Hugging Face token is missing");
     }
+    
+    // Set access token correctly
     env.accessToken = accessToken;
 
+    // Create pipeline with proper options for text generation
     const generationModel = await pipeline("text-generation", "google/gemma-2b-it", {
       revision: "main", // Ensures the latest model version is loaded
     });
@@ -81,36 +83,34 @@ const getRipeningMethodInfo = async (
       throw new Error("AI model not available");
     }
 
-    // Simple prompt to get ripening method
+    // Format prompt properly for gemma model
     const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
 
     console.log("Generating ripening info with prompt:", prompt);
     
-    // Call the AI model
+    // Call the AI model with proper parameters
     const result = await generationModel(prompt, { 
       max_length: 150,
       temperature: 0.3
     });
     
-    console.log("Raw AI response for ripening:",  result);
+    console.log("Raw AI response for ripening:", result);
     
-    // Extract text from the response and ensure it's not empty
-    // const generatedText = result && result[0]?.generated_text 
-    //   ? result[0].generated_text.replace(prompt, "").trim() 
-    //   : "Information not available";
-
-      // const generatedText = result?.[0]?.generated_text?.replace(prompt, "").trim() || "Information not available";
-      const rawText = result?.[0]?.generated_text ?? "Information not available";
-
-      // Remove prompt + trim excessive \n
-const cleanedText = rawText.replace(prompt, "").replace(/\n+/g, " ").trim();
-
-
-console.log("Processed AI response:", cleanedText);
-
-return cleanedText || "Information not available";
+    // Extract and properly format the response
+    let generatedText = "";
+    if (result && Array.isArray(result) && result.length > 0) {
+      // Handle different response formats based on model output structure
+      if (result[0].generated_text) {
+        generatedText = result[0].generated_text;
+        // Remove the prompt from the beginning if it's included
+        if (generatedText.startsWith(prompt)) {
+          generatedText = generatedText.substring(prompt.length).trim();
+        }
+      }
+    }
     
-
+    console.log("Processed ripening text:", generatedText);
+    return generatedText || "Information not available";
   } catch (error) {
     console.error("Error getting ripening information:", error);
     return "Information not available due to an error.";
@@ -133,31 +133,29 @@ const generateSustainableAlternatives = async (
 
     console.log("Generating alternatives with prompt:", prompt);
     
-    // Call the AI model
+    // Call the AI model with correct parameters
     const result = await generationModel(prompt, { 
-      max_length: 150,
+      max_length: 250,  // Increased to get more complete responses
       temperature: 0.3,
-      top_p: 0.9,       // More focused sampling
     }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Extract the generated text and ensure it's not empty
-    // const generatedText = result && result[0]?.generated_text 
-    //   ? result[0].generated_text.replace(prompt, "").trim() 
-    //   : "Unable to generate alternatives.";
-
-    const generatedText = result?.[0]?.generated_text?.trim() || "Information not available";
-
-    // Prevent meaningless repetition
-if (generatedText.includes("sanded sanded") || generatedText.length < 20) {
-  return "The model struggled to generate a meaningful answer. Try again!";
-}
-
+    // Extract and properly format the response
+    let generatedText = "";
+    if (result && Array.isArray(result) && result.length > 0) {
+      // Handle different response formats based on model output structure
+      if (result[0].generated_text) {
+        generatedText = result[0].generated_text;
+        // Remove the prompt from the beginning if it's included
+        if (generatedText.startsWith(prompt)) {
+          generatedText = generatedText.substring(prompt.length).trim();
+        }
+      }
+    }
+    
     console.log("Extracted alternatives text:", generatedText);
-    
     return generatedText || `Unable to generate alternatives for ${produceName}. Please try again.`;
-    
   } catch (error) {
     console.error("Error generating sustainable alternatives:", error);
     return `Error generating alternatives: ${error instanceof Error ? error.message : "Unknown error"}`;
@@ -230,7 +228,7 @@ export const analyzeProduceSustainability = async (
     const co2Impact = calculateCO2Impact(travelDistance);
 
     // Get ripening method info - Now storing the raw text
-    const ripeningMethod = await getRipeningMethodInfo(produceName,  userLocationString, generationModel);
+    const ripeningMethod = await getRipeningMethodInfo(produceName, userLocationString, generationModel);
 
     // Get sustainable alternatives as raw text
     const rawAlternativesText = await generateSustainableAlternatives(
