@@ -31,13 +31,14 @@ const loadModel = async () => {
       throw new Error("Hugging Face token is missing");
     }
     
-    // Set access token correctly
-    env.accessToken = accessToken;
+    // Set options object with the token for pipeline
+    const options = {
+      accessToken: accessToken,
+      revision: "main", // Ensures the latest model version is loaded
+    };
 
     // Create pipeline with proper options for text generation
-    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", {
-      revision: "main", // Ensures the latest model version is loaded
-    });
+    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", options);
 
     console.log("Model loaded successfully:", !!generationModel);
     return generationModel;

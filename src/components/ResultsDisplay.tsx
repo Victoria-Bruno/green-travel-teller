@@ -23,6 +23,15 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   console.log("Raw alternatives text:", data.rawAlternativesText);
   console.log("Raw ripening info:", data.ripeningMethod);
   
+  // Check for empty responses and provide fallback text
+  const ripeningContent = data.ripeningMethod && data.ripeningMethod !== "Information not available" 
+    ? data.ripeningMethod 
+    : "No ripening information available for this produce.";
+    
+  const alternativesContent = data.rawAlternativesText && data.rawAlternativesText !== "No alternatives available" 
+    ? data.rawAlternativesText 
+    : "No sustainable alternatives information available for this produce.";
+  
   return (
     <div className="space-y-6 animate-slide-up">
       <Card className="shadow-md">
@@ -85,9 +94,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
           <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-100">
             <h3 className="text-md font-medium text-gray-700 mb-2">Ripening Method Information:</h3>
             <div className="whitespace-pre-wrap text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 max-h-[200px] overflow-y-auto">
-              {data.ripeningMethod && data.ripeningMethod !== "Information not available" 
-                ? data.ripeningMethod 
-                : "No ripening information available for this produce."}
+              {ripeningContent}
             </div>
           </div>
         </CardContent>
@@ -104,9 +111,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
         
         <CardContent>
           <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700 text-sm max-h-[400px] overflow-y-auto">
-            {data.rawAlternativesText && data.rawAlternativesText !== "No alternatives available" 
-              ? data.rawAlternativesText 
-              : "No sustainable alternatives information available for this produce."}
+            {alternativesContent}
           </div>
         </CardContent>
       </Card>
