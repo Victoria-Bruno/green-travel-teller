@@ -28,21 +28,16 @@ const loadModel = async () => {
 
     const accessToken = import.meta.env.VITE_HUGGING_FACE_TOKEN;
 
-    // Set Hugging Face API token for authentication
-    if (accessToken) {
-      // Using env.setAccessToken method to set the token
-      env.accessToken = accessToken; // Fixed property name
-    } else {
+    if (!accessToken) {
       throw new Error("Hugging Face token is missing");
     }
+    env.accessToken = accessToken;
 
-   console.log("Loading text generation model...");
-    const generationModel = await pipeline(
-      "text-generation", 
-      "Xenova/distilgpt2"  // Using a smaller, supported model
-    );
-    
-    console.log("Model loaded successfully:", generationModel !== null);
+    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", {
+      revision: "main", // Ensures the latest model version is loaded
+    });
+
+    console.log("Model loaded successfully:", !!generationModel);
     return generationModel;
   } catch (error) {
     console.error("Error loading AI model:", error);
@@ -87,28 +82,35 @@ const getRipeningMethodInfo = async (
     }
 
     // Simple prompt to get ripening method
-    const prompt = `How does ${produceName} ripen in ${userLocation}?`;
+    const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
 
     console.log("Generating ripening info with prompt:", prompt);
     
     // Call the AI model
     const result = await generationModel(prompt, { 
-      max_length: 100,
-      temperature: 0.7
+      max_length: 150,
+      temperature: 0.3
     });
     
-    console.log("Raw AI response for ripening:", result);
+    console.log("Raw AI response for ripening:",  result);
     
     // Extract text from the response and ensure it's not empty
     // const generatedText = result && result[0]?.generated_text 
     //   ? result[0].generated_text.replace(prompt, "").trim() 
     //   : "Information not available";
 
-      const generatedText = result?.[0]?.generated_text?.trim() || "Information not available";
+      // const generatedText = result?.[0]?.generated_text?.replace(prompt, "").trim() || "Information not available";
+      const rawText = result?.[0]?.generated_text ?? "Information not available";
+
+      // Remove prompt + trim excessive \n
+const cleanedText = rawText.replace(prompt, "").replace(/\n+/g, " ").trim();
+
+
+console.log("Processed AI response:", cleanedText);
+
+return cleanedText || "Information not available";
     
-    console.log("Extracted ripening text:", generatedText);
-    
-    return generatedText || "Information not available";
+
   } catch (error) {
     console.error("Error getting ripening information:", error);
     return "Information not available due to an error.";
@@ -127,15 +129,15 @@ const generateSustainableAlternatives = async (
     }
 
     // Create a direct prompt for the AI model
-    const prompt = `What are the top 3 most sustainable alternatives to ${produceName} for someone living in ${userLocation}? 
-    For each alternative, explain why it's more sustainable (lower emissions, less water usage, etc.).`;
+    const prompt = `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`;
 
     console.log("Generating alternatives with prompt:", prompt);
     
     // Call the AI model
     const result = await generationModel(prompt, { 
-      max_length: 350,
-      temperature: 0.7
+      max_length: 150,
+      temperature: 0.3,
+      top_p: 0.9,       // More focused sampling
     }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
@@ -147,7 +149,11 @@ const generateSustainableAlternatives = async (
 
     const generatedText = result?.[0]?.generated_text?.trim() || "Information not available";
 
-    
+    // Prevent meaningless repetition
+if (generatedText.includes("sanded sanded") || generatedText.length < 20) {
+  return "The model struggled to generate a meaningful answer. Try again!";
+}
+
     console.log("Extracted alternatives text:", generatedText);
     
     return generatedText || `Unable to generate alternatives for ${produceName}. Please try again.`;
