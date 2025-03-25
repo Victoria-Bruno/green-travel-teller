@@ -18,43 +18,41 @@ export interface ProduceInfo {
   userLocation: string;
 }
 
-// Load AI model only when needed
-const loadModel = async () => {
+const loadModel = async (request: { text: string; modelUrl: string }) => {
+
   try {
     toast({
       title: "Loading AI Model",
       description: "This may take a moment...",
     });
 
-    // Get token from localStorage instead of env variables
-    const storedToken = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
-
-    if (!storedToken) {
-      console.error("Missing Hugging Face token in localStorage");
-      throw new Error("Hugging Face token is missing. Please add your API key above.");
-    }
-    
-    // Set the token for the transformers.js library
-    // Using bracket notation to avoid TypeScript errors
-    env['accessToken'] = storedToken;
-    console.log("Access token set:", !!storedToken);
-
-    // Use a simpler model with fewer parameters for better browser performance
-    const generationModel = await pipeline("text-generation", "google/gemma-2b-it");
-    
-    console.log("Model loaded successfully:", !!generationModel);
-    return generationModel;
-  } catch (error) {
-    console.error("Error loading AI model:", error);
-    toast({
-      title: "Model Loading Error",
-      description: "Could not load AI model. Using simplified analysis.",
-      variant: "destructive",
+    // Make a POST request to the server's API endpoint to generate text
+    const response = await fetch("https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.2-1B", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input: request.text,
+        modelUrl: request.modelUrl,
+      }),
     });
 
-    return null;
+    if (!response.ok) {
+      throw new Error("Failed to fetch generated text.");
+    }
+
+    // Expect JSON response from the model
+    const data = await response.json();
+
+    // Assuming the API returns generated text in `data.generated_text`
+  const blob = new Blob([data], {type:"application/json"});
+  console.log(blob)
+  } catch (error) {
+    console.error("Error generating text:", error);
   }
 };
+
 
 // Calculate CO2 impact based on travel distance
 const calculateCO2Impact = (travelDistance: number): number => {
