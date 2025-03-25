@@ -31,21 +31,13 @@ const loadModel = async () => {
       throw new Error("Hugging Face token is missing");
     }
     
-    console.log("Using access token:", accessToken ? "Token exists" : "No token");
-    
-    // Set the token for the env globally - using the correct property
+    // Set access token correctly
     env.accessToken = accessToken;
-    
-    console.log("Access token set using env.accessToken");
-    
+
     // Create pipeline with proper options for text generation
-    const generationModel = await pipeline(
-      "text-generation", 
-      "google/gemma-2b-it", 
-      {
-        revision: "main"
-      }
-    );
+    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", {
+      revision: "main", // Ensures the latest model version is loaded
+    });
 
     console.log("Model loaded successfully:", !!generationModel);
     return generationModel;
@@ -91,47 +83,29 @@ const getRipeningMethodInfo = async (
       throw new Error("AI model not available");
     }
 
-    // Format prompt for gemma model with correct format
+    // Format prompt properly for gemma model
     const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
 
     console.log("Generating ripening info with prompt:", prompt);
     
     // Call the AI model with proper parameters
     const result = await generationModel(prompt, { 
-      max_new_tokens: 150,
+      max_length: 150,
       temperature: 0.3
     });
     
     console.log("Raw AI response for ripening:", result);
     
-    // Extract the generated text properly with multiple fallbacks
+    // Extract and properly format the response
     let generatedText = "";
-    
-    // First attempt - try to extract from standard format
     if (result && Array.isArray(result) && result.length > 0) {
-      const firstResult = result[0];
-      if (firstResult?.generated_text) {
-        generatedText = firstResult.generated_text;
-      }
-    }
-    
-    // Second attempt - try to get text from non-standard result format
-    if (!generatedText && result) {
-      if (typeof result === 'string') {
-        generatedText = result;
-      } else if (typeof result.generated_text === 'string') {
-        generatedText = result.generated_text;
-      } else if (Array.isArray(result) && typeof result[0] === 'string') {
-        generatedText = result[0];
-      }
-    }
-    
-    // Last resort - stringify the whole response
-    if (!generatedText && result) {
-      try {
-        generatedText = typeof result === 'object' ? JSON.stringify(result) : String(result);
-      } catch (e) {
-        console.error("Could not stringify result:", e);
+      // Handle different response formats based on model output structure
+      if (result[0].generated_text) {
+        generatedText = result[0].generated_text;
+        // Remove the prompt from the beginning if it's included
+        if (generatedText.startsWith(prompt)) {
+          generatedText = generatedText.substring(prompt.length).trim();
+        }
       }
     }
     
@@ -143,7 +117,7 @@ const getRipeningMethodInfo = async (
   }
 };
 
-// Generate sustainable alternatives with similar fixes
+// Generate sustainable alternatives - main function that returns raw text
 const generateSustainableAlternatives = async (
   produceName: string,
   userLocation: string,
@@ -154,47 +128,29 @@ const generateSustainableAlternatives = async (
       throw new Error("AI model not available");
     }
 
-    // Create a simple prompt string
+    // Create a direct prompt for the AI model
     const prompt = `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`;
 
     console.log("Generating alternatives with prompt:", prompt);
     
     // Call the AI model with correct parameters
     const result = await generationModel(prompt, { 
-      max_new_tokens: 250,
+      max_length: 250,  // Increased to get more complete responses
       temperature: 0.3,
     }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Use the same extraction logic as in getRipeningMethodInfo
+    // Extract and properly format the response
     let generatedText = "";
-    
-    // First attempt - standard format
     if (result && Array.isArray(result) && result.length > 0) {
-      const firstResult = result[0];
-      if (firstResult?.generated_text) {
-        generatedText = firstResult.generated_text;
-      }
-    }
-    
-    // Second attempt - non-standard format
-    if (!generatedText && result) {
-      if (typeof result === 'string') {
-        generatedText = result;
-      } else if (typeof result.generated_text === 'string') {
-        generatedText = result.generated_text;
-      } else if (Array.isArray(result) && typeof result[0] === 'string') {
-        generatedText = result[0];
-      }
-    }
-    
-    // Last resort
-    if (!generatedText && result) {
-      try {
-        generatedText = typeof result === 'object' ? JSON.stringify(result) : String(result);
-      } catch (e) {
-        console.error("Could not stringify result:", e);
+      // Handle different response formats based on model output structure
+      if (result[0].generated_text) {
+        generatedText = result[0].generated_text;
+        // Remove the prompt from the beginning if it's included
+        if (generatedText.startsWith(prompt)) {
+          generatedText = generatedText.substring(prompt.length).trim();
+        }
       }
     }
     
