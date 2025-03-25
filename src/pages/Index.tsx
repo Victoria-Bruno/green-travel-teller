@@ -20,8 +20,8 @@ const Index = () => {
     const storedKey = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
     if (storedKey) {
       setApiKey(storedKey);
-      // Also set it for the current session
-      env.accessToken = storedKey;
+      // Also set it for the current session using bracket notation
+      env['accessToken'] = storedKey;
     }
   }, []);
 
@@ -31,8 +31,8 @@ const Index = () => {
       const storedKey = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
       if (storedKey) {
         setApiKey(storedKey);
-        // Also set it for the current session
-        env.accessToken = storedKey;
+        // Also set it for the current session using bracket notation
+        env['accessToken'] = storedKey;
       }
     };
 
@@ -45,8 +45,8 @@ const Index = () => {
   const handleApiKeySubmit = (key: string) => {
     setApiKey(key);
     localStorage.setItem('VITE_HUGGING_FACE_TOKEN', key);
-    // Also set it for the current session
-    env.accessToken = key;
+    // Also set it for the current session using bracket notation
+    env['accessToken'] = key;
     
     toast({
       title: "API Key Saved",

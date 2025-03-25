@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyRound } from 'lucide-react';
+import { env } from "@huggingface/transformers";
 
 interface ApiKeyInputProps {
   onApiKeySubmit: (apiKey: string) => void;
@@ -24,8 +25,11 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onApiKeySubmit, apiKey }) => 
     onApiKeySubmit(key);
     setIsSaved(true);
     
-    // Store in env-like variable that can be accessed by the AI service
-    window.localStorage.setItem('VITE_HUGGING_FACE_TOKEN', key);
+    // Store in localStorage and make it available via a custom event
+    localStorage.setItem('VITE_HUGGING_FACE_TOKEN', key);
+    
+    // Set it directly for the transformer library using bracket notation
+    env['accessToken'] = key;
     
     // Make it available to the current session
     window.dispatchEvent(new CustomEvent('huggingface-token-updated'));

@@ -26,16 +26,18 @@ const loadModel = async () => {
       description: "This may take a moment...",
     });
 
-    const accessToken = import.meta.env.VITE_HUGGING_FACE_TOKEN;
+    // Get token from localStorage instead of env variables
+    const storedToken = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
 
-    if (!accessToken) {
-      console.error("Missing Hugging Face token in environment variables");
-      throw new Error("Hugging Face token is missing. Please add it to your environment variables.");
+    if (!storedToken) {
+      console.error("Missing Hugging Face token in localStorage");
+      throw new Error("Hugging Face token is missing. Please add your API key above.");
     }
     
-    // Set access token correctly before creating pipeline
-    env.accessToken = accessToken;
-    console.log("Access token set:", !!accessToken);
+    // Set the token for the transformers.js library
+    // Using bracket notation to avoid TypeScript errors
+    env['accessToken'] = storedToken;
+    console.log("Access token set:", !!storedToken);
 
     // Use a simpler model with fewer parameters for better browser performance
     const generationModel = await pipeline("text-generation", "google/gemma-2b-it");
