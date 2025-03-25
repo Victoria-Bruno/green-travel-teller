@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 import { pipeline, env } from "@huggingface/transformers";
 import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
@@ -34,21 +33,19 @@ const loadModel = async () => {
     
     console.log("Using access token:", accessToken ? "Token exists" : "No token");
     
-    // Need to set the global token first
-    env.accessToken = accessToken;
+    // Set the token for the env globally
+    env.setAccessToken(accessToken);
     
-    // Then also pass it to the pipeline options
-    const options = {
-      accessToken: accessToken,
-      revision: "main",
-      quantized: false
-    };
-
+    console.log("Access token set globally via env.setAccessToken()");
+    
     // Create pipeline with proper options for text generation
     const generationModel = await pipeline(
       "text-generation", 
       "google/gemma-2b-it", 
-      options
+      {
+        quantized: false,
+        revision: "main"
+      }
     );
 
     console.log("Model loaded successfully:", !!generationModel);
