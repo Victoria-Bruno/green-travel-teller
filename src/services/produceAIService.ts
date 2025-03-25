@@ -1,11 +1,12 @@
 
 import { toast } from "@/components/ui/use-toast";
-import { pipeline, env } from "@huggingface/transformers";
-import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
+import { pipeline } from "@huggingface/transformers";
 
 // Configure transformers.js to use browser cache
-env.allowLocalModels = false;
-env.useBrowserCache = true;
+const config = {
+  allowLocalModels: false,
+  useBrowserCache: true
+};
 
 // Simplified types for basic produce info
 export interface ProduceInfo {
@@ -14,158 +15,105 @@ export interface ProduceInfo {
   co2Impact: number;
   travelDistance: number;
   ripeningMethod: string;
-  rawAlternativesText: string; // Raw text from the LLM
+  rawAlternativesText: string;
   userLocation: string;
 }
 
-// Load AI model only when needed
+// Simplified function to load the model
 const loadModel = async () => {
   try {
     toast({
       title: "Loading AI Model",
-      description: "This may take a moment...",
+      description: "Fetching information about ripening methods...",
     });
 
-    // Get token from localStorage instead of env variables
-    const storedToken = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
-
-    if (!storedToken) {
+    // Get token from localStorage
+    const token = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
+    
+    if (!token) {
       console.error("Missing Hugging Face token in localStorage");
-      throw new Error("Hugging Face token is missing. Please add your API key above.");
+      throw new Error("Please add your Hugging Face API key above to analyze produce.");
     }
-    
-    // Set the token for the transformers.js library
-    // Using bracket notation to avoid TypeScript errors
-    env['accessToken'] = storedToken;
-    console.log("Access token set:", !!storedToken);
 
-    // Use a simpler model with fewer parameters for better browser performance
-    const generationModel = await pipeline("text-generation", "google/gemma-2b-it");
+    // Use a smaller, faster text generation model
+    const model = await pipeline("text-generation", "TinyLlama/TinyLlama-1.1B-Chat-v1.0", {
+      quantized: true, // Use quantized model for better performance
+      accessToken: token, // Pass token as an option
+    });
     
-    console.log("Model loaded successfully:", !!generationModel);
-    return generationModel;
+    console.log("Model loaded successfully");
+    return model;
   } catch (error) {
     console.error("Error loading AI model:", error);
     toast({
-      title: "Model Loading Error",
-      description: "Could not load AI model. Using simplified analysis.",
+      title: "Error Loading Model",
+      description: error instanceof Error ? error.message : "Could not load the AI model",
       variant: "destructive",
     });
-
     return null;
   }
 };
 
 // Calculate CO2 impact based on travel distance
 const calculateCO2Impact = (travelDistance: number): number => {
-  try {
-    // Simplified CO2 calculation based on distance
-    const baseCO2 = 0.2; 
-    const distanceFactor = travelDistance / 10000;
-    const transportEmissions = distanceFactor * 2;
-    
-    // Add some randomness for variability
-    const randomFactor = 0.9 + (Math.random() * 0.2);
-    
-    // Calculate total emissions (rounded to 2 decimal places)
-    return parseFloat((baseCO2 + transportEmissions * randomFactor).toFixed(2));
-  } catch (error) {
-    console.error("Error calculating CO2 impact:", error);
-    return parseFloat((0.0001 * travelDistance + 0.2).toFixed(2));
-  }
+  // Simple calculation based on distance
+  const baseCO2 = 0.2;
+  const distanceFactor = travelDistance / 10000;
+  return parseFloat((baseCO2 + distanceFactor * 2).toFixed(2));
 };
 
-// Generate ripening method info
+// Get information about the ripening method for a specific produce
 const getRipeningMethodInfo = async (
   produceName: string,
-  userLocation: string,
-  generationModel: any,
+  sourceLocation: string,
+  model: any
 ): Promise<string> => {
   try {
-    if (!generationModel) {
-      throw new Error("AI model not available");
+    if (!model) {
+      return "Information not available. Please check your API key.";
     }
 
-    // Format prompt properly for gemma model
-    const prompt = `Describe how ${produceName} is typically ripened when imported to ${userLocation}.`;
+    // Create a clear, specific prompt
+    const prompt = `
+    <|im_start|>user
+    What ripening method is commonly used for ${produceName} that is imported from ${sourceLocation}? Please provide a brief, factual description in 2-3 sentences.
+    <|im_end|>
+    <|im_start|>assistant
+    `;
 
     console.log("Generating ripening info with prompt:", prompt);
     
-    // Call the AI model with proper parameters
-    const result = await generationModel(prompt, { 
+    // Call the model with appropriate parameters
+    const result = await model(prompt, {
       max_new_tokens: 150,
-      temperature: 0.3
+      temperature: 0.3,
+      top_p: 0.95,
     });
     
-    console.log("Raw AI response for ripening:", result);
-    
-    // Extract and properly format the response
-    let generatedText = "";
+    // Extract the answer from the response
+    let response = "";
     if (result && Array.isArray(result) && result.length > 0) {
-      // Handle different response formats based on model output structure
-      if (result[0].generated_text) {
-        generatedText = result[0].generated_text;
-        // Remove the prompt from the beginning if it's included
-        if (generatedText.startsWith(prompt)) {
-          generatedText = generatedText.substring(prompt.length).trim();
-        }
+      response = result[0].generated_text || "";
+      
+      // Clean up the response - extract only the assistant's reply
+      const assistantPart = response.split("<|im_start|>assistant")[1];
+      if (assistantPart) {
+        response = assistantPart.split("<|im_end|>")[0].trim();
+      } else {
+        // If the split didn't work, just remove the prompt
+        response = response.replace(prompt, "").trim();
       }
     }
     
-    console.log("Processed ripening text:", generatedText);
-    return generatedText || "Information not available";
+    console.log("Processed ripening text:", response);
+    return response || "Information about ripening methods could not be generated.";
   } catch (error) {
     console.error("Error getting ripening information:", error);
-    return "Information not available due to an error.";
+    return "Error retrieving ripening information. Please try again.";
   }
 };
 
-// Generate sustainable alternatives - main function that returns raw text
-const generateSustainableAlternatives = async (
-  produceName: string,
-  userLocation: string,
-  generationModel: any
-): Promise<string> => {
-  try {
-    if (!generationModel) {
-      throw new Error("AI model not available");
-    }
-
-    // Create a direct prompt for the AI model
-    const prompt = `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`;
-
-    console.log("Generating alternatives with prompt:", prompt);
-    
-    // Call the AI model with correct parameters
-    const result = await generationModel(prompt, { 
-      max_new_tokens: 250,
-      temperature: 0.3,
-    }); 
-
-    console.log("Raw AI response for sustainable alternatives:", result);
-    
-    // Extract and properly format the response
-    let generatedText = "";
-    if (result && Array.isArray(result) && result.length > 0) {
-      // Handle different response formats based on model output structure
-      if (result[0].generated_text) {
-        generatedText = result[0].generated_text;
-        // Remove the prompt from the beginning if it's included
-        if (generatedText.startsWith(prompt)) {
-          generatedText = generatedText.substring(prompt.length).trim();
-        }
-      }
-    }
-    
-    console.log("Extracted alternatives text:", generatedText);
-    return generatedText || `Unable to generate alternatives for ${produceName}. Please try again.`;
-  } catch (error) {
-    console.error("Error generating sustainable alternatives:", error);
-    return `Error generating alternatives: ${error instanceof Error ? error.message : "Unknown error"}`;
-  }
-};
-
-// Main analysis function - simplified
+// Main function to analyze produce sustainability
 export const analyzeProduceSustainability = async (
   produceName: string,
   sourceLocation: string,
@@ -177,110 +125,67 @@ export const analyzeProduceSustainability = async (
   }
 ): Promise<ProduceInfo> => {
   try {
-    // Show progress
     toast({
-      title: "Analyzing produce data...",
-      description: "Using AI to find sustainable alternatives...",
+      title: "Analyzing Produce",
+      description: "Getting information about ripening methods...",
     });
 
-    // Get user location string for display
+    // Format user location for display
     const userLocationString =
       userLocation.city && userLocation.country
         ? `${userLocation.city}, ${userLocation.country}`
         : userLocation.city || userLocation.country || "your location";
 
-    // Load the AI generation model - only when needed
-    const generationModel = await loadModel();
-    
-    // If model fails to load, use fallback approach
-    let ripeningMethod = "Information not available";
-    let rawAlternativesText = "No alternatives available";
-    
-    // Calculate travel distance
-    toast({
-      title: "Calculating distance",
-      description: `Determining travel distance from ${sourceLocation} to ${userLocationString}...`,
-    });
+    // Load the AI model
+    const model = await loadModel();
 
-    // Get user coordinates
-    let userCoords;
-    try {
-      if (userLocation.latitude && userLocation.longitude) {
-        userCoords = {
-          lat: userLocation.latitude,
-          lng: userLocation.longitude,
-        };
-      } else {
-        throw new Error("Location coordinates not provided");
-      }
-    } catch (error) {
-      toast({
-        title: "Location Error",
-        description:
-          "Unable to determine your location. Distance calculations may be approximate.",
-        variant: "destructive",
-      });
-      // Use location string as fallback
-      userCoords = userLocationString;
-    }
-
-    // Calculate travel distance using Google Maps API
+    // Calculate travel distance from the Google Maps service
+    const userCoords = userLocation.latitude && userLocation.longitude 
+      ? { lat: userLocation.latitude, lng: userLocation.longitude }
+      : userLocationString;
+    
+    // Import the service dynamically to avoid circular dependencies
+    const { calculateDistance } = await import('./googleMapsService');
     const travelDistance = await calculateDistance(sourceLocation, userCoords);
 
-    // Calculate CO2 impact
+    // Calculate CO2 impact based on distance
     const co2Impact = calculateCO2Impact(travelDistance);
 
-    // Only attempt to generate AI content if the model loaded successfully
-    if (generationModel) {
-      // Get ripening method info
-      ripeningMethod = await getRipeningMethodInfo(produceName, userLocationString, generationModel);
+    // Get ripening method information
+    const ripeningMethod = await getRipeningMethodInfo(
+      produceName,
+      sourceLocation,
+      model
+    );
 
-      // Get sustainable alternatives as raw text
-      rawAlternativesText = await generateSustainableAlternatives(
-        produceName,
-        userLocationString,
-        generationModel
-      );
-    } else {
-      toast({
-        title: "Using simplified analysis",
-        description: "AI model could not be loaded. Using basic calculations only.",
-        variant: "default",
-      });
-    }
-
-    // Create the final result with raw text
+    // Create a simplified result with only the necessary information
     const result: ProduceInfo = {
       name: produceName,
       source: sourceLocation,
       co2Impact,
       travelDistance,
       ripeningMethod: ripeningMethod || "No ripening information available",
-      rawAlternativesText: rawAlternativesText || "No alternatives available",
+      rawAlternativesText: "Feature not available in this version", // Simplified
       userLocation: userLocationString,
     };
 
-    // Log the results to console for verification
-    console.log("Analysis complete with raw alternatives text:", result);
+    console.log("Analysis complete:", result);
 
-    // Dismiss progress toast
     toast({
-      title: "Analysis complete",
-      description: "Sustainability data calculated successfully.",
-      variant: "default",
+      title: "Analysis Complete",
+      description: "Ripening information retrieved successfully.",
     });
 
     return result;
   } catch (error) {
-    console.error("Error analyzing produce sustainability:", error);
+    console.error("Error analyzing produce:", error);
+    
     toast({
       title: "Analysis Failed",
-      description:
-        error instanceof Error
-          ? error.message
-          : "Failed to analyze produce sustainability",
+      description: error instanceof Error ? error.message : "Failed to analyze produce",
       variant: "destructive",
     });
+    
     throw error;
   }
 };
