@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { pipeline, env } from "@huggingface/transformers";
 import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
@@ -31,14 +32,24 @@ const loadModel = async () => {
       throw new Error("Hugging Face token is missing");
     }
     
-    // Set options object with the token for pipeline
+    console.log("Using access token:", accessToken ? "Token exists" : "No token");
+    
+    // Need to set the global token first
+    env.accessToken = accessToken;
+    
+    // Then also pass it to the pipeline options
     const options = {
       accessToken: accessToken,
-      revision: "main", // Ensures the latest model version is loaded
+      revision: "main",
+      quantized: false
     };
 
     // Create pipeline with proper options for text generation
-    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", options);
+    const generationModel = await pipeline(
+      "text-generation", 
+      "google/gemma-2b-it", 
+      options
+    );
 
     console.log("Model loaded successfully:", !!generationModel);
     return generationModel;
@@ -84,29 +95,51 @@ const getRipeningMethodInfo = async (
       throw new Error("AI model not available");
     }
 
-    // Format prompt properly for gemma model
-    const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
+    // Format prompt for gemma model - using proper message format
+    const messages = [
+      {
+        role: "user", 
+        content: `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`
+      }
+    ];
 
-    console.log("Generating ripening info with prompt:", prompt);
+    console.log("Generating ripening info with messages:", messages);
     
     // Call the AI model with proper parameters
-    const result = await generationModel(prompt, { 
-      max_length: 150,
+    const result = await generationModel(messages, { 
+      max_new_tokens: 150,
       temperature: 0.3
     });
     
     console.log("Raw AI response for ripening:", result);
     
-    // Extract and properly format the response
+    // Extract the generated text properly
     let generatedText = "";
     if (result && Array.isArray(result) && result.length > 0) {
-      // Handle different response formats based on model output structure
       if (result[0].generated_text) {
-        generatedText = result[0].generated_text;
-        // Remove the prompt from the beginning if it's included
-        if (generatedText.startsWith(prompt)) {
-          generatedText = generatedText.substring(prompt.length).trim();
+        const lastMessage = result[0].generated_text;
+        // Extract content from the assistant's response
+        if (Array.isArray(lastMessage) && lastMessage.length > 0) {
+          const assistantMessage = lastMessage.find(msg => msg.role === "assistant");
+          if (assistantMessage && assistantMessage.content) {
+            generatedText = assistantMessage.content;
+          } else {
+            // Fallback: just get the last message content
+            generatedText = lastMessage[lastMessage.length - 1].content || "";
+          }
+        } else if (typeof lastMessage === 'string') {
+          generatedText = lastMessage;
         }
+      }
+    }
+    
+    // More generic fallback - try to parse the full response if still no text
+    if (!generatedText && result) {
+      try {
+        // Try to access the response as a string
+        generatedText = JSON.stringify(result);
+      } catch (e) {
+        console.error("Could not stringify result:", e);
       }
     }
     
@@ -118,7 +151,7 @@ const getRipeningMethodInfo = async (
   }
 };
 
-// Generate sustainable alternatives - main function that returns raw text
+// Generate sustainable alternatives with similar fixes
 const generateSustainableAlternatives = async (
   produceName: string,
   userLocation: string,
@@ -129,29 +162,51 @@ const generateSustainableAlternatives = async (
       throw new Error("AI model not available");
     }
 
-    // Create a direct prompt for the AI model
-    const prompt = `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`;
+    // Create a message array for the model
+    const messages = [
+      {
+        role: "user", 
+        content: `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`
+      }
+    ];
 
-    console.log("Generating alternatives with prompt:", prompt);
+    console.log("Generating alternatives with messages:", messages);
     
     // Call the AI model with correct parameters
-    const result = await generationModel(prompt, { 
-      max_length: 250,  // Increased to get more complete responses
+    const result = await generationModel(messages, { 
+      max_new_tokens: 250,
       temperature: 0.3,
     }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Extract and properly format the response
+    // Extract the generated text properly
     let generatedText = "";
     if (result && Array.isArray(result) && result.length > 0) {
-      // Handle different response formats based on model output structure
       if (result[0].generated_text) {
-        generatedText = result[0].generated_text;
-        // Remove the prompt from the beginning if it's included
-        if (generatedText.startsWith(prompt)) {
-          generatedText = generatedText.substring(prompt.length).trim();
+        const lastMessage = result[0].generated_text;
+        // Extract content from the assistant's response
+        if (Array.isArray(lastMessage) && lastMessage.length > 0) {
+          const assistantMessage = lastMessage.find(msg => msg.role === "assistant");
+          if (assistantMessage && assistantMessage.content) {
+            generatedText = assistantMessage.content;
+          } else {
+            // Fallback: just get the last message content
+            generatedText = lastMessage[lastMessage.length - 1].content || "";
+          }
+        } else if (typeof lastMessage === 'string') {
+          generatedText = lastMessage;
         }
+      }
+    }
+    
+    // More generic fallback - try to parse the full response if still no text
+    if (!generatedText && result) {
+      try {
+        // Try to access the response as a string
+        generatedText = JSON.stringify(result);
+      } catch (e) {
+        console.error("Could not stringify result:", e);
       }
     }
     
