@@ -33,17 +33,16 @@ const loadModel = async () => {
     
     console.log("Using access token:", accessToken ? "Token exists" : "No token");
     
-    // Set the token for the env globally
-    env.setAccessToken(accessToken);
+    // Set the token for the env globally - using the correct property
+    env.accessToken = accessToken;
     
-    console.log("Access token set globally via env.setAccessToken()");
+    console.log("Access token set using env.accessToken");
     
     // Create pipeline with proper options for text generation
     const generationModel = await pipeline(
       "text-generation", 
       "google/gemma-2b-it", 
       {
-        quantized: false,
         revision: "main"
       }
     );
@@ -92,49 +91,45 @@ const getRipeningMethodInfo = async (
       throw new Error("AI model not available");
     }
 
-    // Format prompt for gemma model - using proper message format
-    const messages = [
-      {
-        role: "user", 
-        content: `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`
-      }
-    ];
+    // Format prompt for gemma model with correct format
+    const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
 
-    console.log("Generating ripening info with messages:", messages);
+    console.log("Generating ripening info with prompt:", prompt);
     
     // Call the AI model with proper parameters
-    const result = await generationModel(messages, { 
+    const result = await generationModel(prompt, { 
       max_new_tokens: 150,
       temperature: 0.3
     });
     
     console.log("Raw AI response for ripening:", result);
     
-    // Extract the generated text properly
+    // Extract the generated text properly with multiple fallbacks
     let generatedText = "";
+    
+    // First attempt - try to extract from standard format
     if (result && Array.isArray(result) && result.length > 0) {
-      if (result[0].generated_text) {
-        const lastMessage = result[0].generated_text;
-        // Extract content from the assistant's response
-        if (Array.isArray(lastMessage) && lastMessage.length > 0) {
-          const assistantMessage = lastMessage.find(msg => msg.role === "assistant");
-          if (assistantMessage && assistantMessage.content) {
-            generatedText = assistantMessage.content;
-          } else {
-            // Fallback: just get the last message content
-            generatedText = lastMessage[lastMessage.length - 1].content || "";
-          }
-        } else if (typeof lastMessage === 'string') {
-          generatedText = lastMessage;
-        }
+      const firstResult = result[0];
+      if (firstResult?.generated_text) {
+        generatedText = firstResult.generated_text;
       }
     }
     
-    // More generic fallback - try to parse the full response if still no text
+    // Second attempt - try to get text from non-standard result format
+    if (!generatedText && result) {
+      if (typeof result === 'string') {
+        generatedText = result;
+      } else if (typeof result.generated_text === 'string') {
+        generatedText = result.generated_text;
+      } else if (Array.isArray(result) && typeof result[0] === 'string') {
+        generatedText = result[0];
+      }
+    }
+    
+    // Last resort - stringify the whole response
     if (!generatedText && result) {
       try {
-        // Try to access the response as a string
-        generatedText = JSON.stringify(result);
+        generatedText = typeof result === 'object' ? JSON.stringify(result) : String(result);
       } catch (e) {
         console.error("Could not stringify result:", e);
       }
@@ -159,49 +154,45 @@ const generateSustainableAlternatives = async (
       throw new Error("AI model not available");
     }
 
-    // Create a message array for the model
-    const messages = [
-      {
-        role: "user", 
-        content: `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`
-      }
-    ];
+    // Create a simple prompt string
+    const prompt = `List three sustainable alternatives to ${produceName} in ${userLocation}. Explain why these are good alternatives.`;
 
-    console.log("Generating alternatives with messages:", messages);
+    console.log("Generating alternatives with prompt:", prompt);
     
     // Call the AI model with correct parameters
-    const result = await generationModel(messages, { 
+    const result = await generationModel(prompt, { 
       max_new_tokens: 250,
       temperature: 0.3,
     }); 
 
     console.log("Raw AI response for sustainable alternatives:", result);
     
-    // Extract the generated text properly
+    // Use the same extraction logic as in getRipeningMethodInfo
     let generatedText = "";
+    
+    // First attempt - standard format
     if (result && Array.isArray(result) && result.length > 0) {
-      if (result[0].generated_text) {
-        const lastMessage = result[0].generated_text;
-        // Extract content from the assistant's response
-        if (Array.isArray(lastMessage) && lastMessage.length > 0) {
-          const assistantMessage = lastMessage.find(msg => msg.role === "assistant");
-          if (assistantMessage && assistantMessage.content) {
-            generatedText = assistantMessage.content;
-          } else {
-            // Fallback: just get the last message content
-            generatedText = lastMessage[lastMessage.length - 1].content || "";
-          }
-        } else if (typeof lastMessage === 'string') {
-          generatedText = lastMessage;
-        }
+      const firstResult = result[0];
+      if (firstResult?.generated_text) {
+        generatedText = firstResult.generated_text;
       }
     }
     
-    // More generic fallback - try to parse the full response if still no text
+    // Second attempt - non-standard format
+    if (!generatedText && result) {
+      if (typeof result === 'string') {
+        generatedText = result;
+      } else if (typeof result.generated_text === 'string') {
+        generatedText = result.generated_text;
+      } else if (Array.isArray(result) && typeof result[0] === 'string') {
+        generatedText = result[0];
+      }
+    }
+    
+    // Last resort
     if (!generatedText && result) {
       try {
-        // Try to access the response as a string
-        generatedText = JSON.stringify(result);
+        generatedText = typeof result === 'object' ? JSON.stringify(result) : String(result);
       } catch (e) {
         console.error("Could not stringify result:", e);
       }
