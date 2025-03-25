@@ -1,8 +1,8 @@
 
 import React from 'react';
 import type { ProduceInfo } from '../services/produceAIService';
-import { Leaf, Route, Droplets, AlertCircle, ExternalLink, Info } from 'lucide-react';
-import AlternativesSection from './AlternativesSection';
+import { Leaf, Route, Droplets, ExternalLink, Info, Heart } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ResultsDisplayProps {
   data: ProduceInfo;
@@ -19,118 +19,123 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   
   const impactData = getImpactLevel(data.co2Impact);
   
-  // Check if we have any alternatives to display
-  const hasAlternatives = (
-    (data.seasonalAlternatives && data.seasonalAlternatives.length > 0) || 
-    (data.localAlternatives && data.localAlternatives.length > 0)
-  );
+  // Check if we have valid data for the ripening method
+  const hasRipeningData = data.ripeningMethod && 
+                         data.ripeningMethod !== "Information not available" &&
+                         data.ripeningMethod !== "Information not available due to an error.";
+                         
+  // Check if we have valid alternatives data                
+  const hasAlternativesData = data.rawAlternativesText && 
+                             data.rawAlternativesText !== "No alternatives available" &&
+                             !data.rawAlternativesText.includes("Error generating alternatives");
+  
+  console.log("ResultsDisplay rendering with data:", data);
   
   return (
     <div className="space-y-6 animate-slide-up">
-      <div className="glass-panel p-6">
-        <div className="text-gray-600 mb-4 text-sm">
-          Because you are located in {data.userLocation} and the {data.name} is imported from {data.source}, 
-          here are some more sustainable choices that provide similar nutritional benefits:
-        </div>
+      <Card className="shadow-md">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-xl text-gray-800">{data.name}</CardTitle>
+            <span className="bg-sage-100 text-sage-700 px-2 py-1 rounded-full text-xs font-medium">
+              From {data.source}
+            </span>
+          </div>
+          <CardDescription>
+            Because you are located in {data.userLocation}, here's some information about this produce:
+          </CardDescription>
+        </CardHeader>
         
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="font-semibold text-xl text-gray-800">{data.name}</h2>
-          <span className="pill-tag">
-            {data.inSeason ? 'In Season' : 'Out of Season'}
-          </span>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-1 p-3 bg-white/50 rounded-xl">
-            <div className="section-title flex items-center gap-1.5">
-              <Route className="w-3.5 h-3.5" />
-              <span>Travel Distance</span>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="space-y-1 p-3 bg-white/50 rounded-xl border border-gray-100">
+              <div className="section-title flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                <Route className="w-3.5 h-3.5" />
+                <span>Travel Distance</span>
+              </div>
+              <p className="text-2xl font-medium text-gray-900">{data.travelDistance.toLocaleString()} km</p>
+              <p className="text-xs text-gray-500">From {data.source}</p>
+              <div className="flex items-center mt-1 text-xs text-gray-400">
+                <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span>Distance calculated using Google Maps API</span>
+              </div>
             </div>
-            <p className="text-2xl font-medium text-gray-900">{data.travelDistance.toLocaleString()} km</p>
-            <p className="text-xs text-gray-500">From {data.source}</p>
-            <div className="flex items-center mt-1 text-xs text-gray-400">
-              <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span>Distance calculated using Google Maps API</span>
+            
+            <div className="space-y-1 p-3 bg-white/50 rounded-xl border border-gray-100">
+              <div className="section-title flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                <Leaf className="w-3.5 h-3.5" />
+                <span>CO2 Impact</span>
+              </div>
+              <p className={`text-2xl font-medium ${impactData.color}`}>
+                {data.co2Impact} kg CO<sub>2</sub>
+              </p>
+              <p className="text-xs text-gray-500">{impactData.level} environmental impact</p>
+              <div className="flex items-center mt-1 text-xs text-gray-400">
+                <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span>Calculated based on distance</span>
+              </div>
+            </div>
+            
+            <div className="space-y-1 p-3 bg-white/50 rounded-xl border border-gray-100">
+              <div className="section-title flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                <Droplets className="w-3.5 h-3.5" />
+                <span>Ripening</span>
+              </div>
+              <p className="text-sm font-medium text-gray-700">
+                {hasRipeningData ? "Ripening Information Available" : "No Ripening Data"}
+              </p>
+              <div className="flex items-center mt-1 text-xs text-gray-400">
+                <Info className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span>{hasRipeningData ? "Method info available below" : "AI data not available"}</span>
+              </div>
             </div>
           </div>
           
-          <div className="space-y-1 p-3 bg-white/50 rounded-xl">
-            <div className="section-title flex items-center gap-1.5">
-              <Leaf className="w-3.5 h-3.5" />
-              <span>CO2 Impact</span>
+          {/* Ripening Method - Only show if we have valid data */}
+          {hasRipeningData && (
+            <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-100">
+              <h3 className="text-md font-medium text-gray-700 mb-2">Ripening Method Information:</h3>
+              <div className="whitespace-pre-wrap text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 max-h-[200px] overflow-y-auto">
+                {data.ripeningMethod}
+              </div>
             </div>
-            <p className={`text-2xl font-medium ${impactData.color}`}>
-              {data.co2Impact} kg CO<sub>2</sub>
-            </p>
-            <p className="text-xs text-gray-500">{impactData.level} environmental impact</p>
-            <div className="flex items-center mt-1 text-xs text-gray-400">
-              <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span>Calculated using AI analysis</span>
-            </div>
-          </div>
-          
-          <div className="space-y-1 p-3 bg-white/50 rounded-xl">
-            <div className="section-title flex items-center gap-1.5">
-              <Droplets className="w-3.5 h-3.5" />
-              <span>Ripening</span>
-            </div>
-            {data.ripeningMethod ? (
-              <>
-                <p className="text-sm font-medium text-gray-700">Artificial Ripening</p>
-                <p className="text-xs text-gray-500">Uses post-harvest treatments</p>
-                <div className="flex items-center mt-1 text-xs text-gray-400">
-                  <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <span>Determined by AI analysis</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-700">Natural Ripening</p>
-                <p className="text-xs text-gray-500">No artificial process detected</p>
-                <div className="flex items-center mt-1 text-xs text-gray-400">
-                  <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <span>Determined by AI analysis</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        
-        {data.ripeningMethod && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-700">{data.ripeningMethod}</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
       
-      {hasAlternatives && (
-        <div className="glass-panel p-6">
-          <h3 className="font-semibold text-lg text-gray-800 mb-4">More Sustainable Alternatives</h3>
-          <div className="text-xs text-gray-500 mb-4">
-            Alternatives are ranked based on nutritional similarity (70%), locality (20%), and environmental impact (10%).
-          </div>
+      {/* Sustainable Alternatives Section - Only show if we have valid data */}
+      {hasAlternativesData ? (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
+            <CardDescription>
+              AI-generated alternatives to {data.name} for your location
+            </CardDescription>
+          </CardHeader>
           
-          {data.seasonalAlternatives && data.seasonalAlternatives.length > 0 && (
-            <div className="mb-6">
-              <AlternativesSection 
-                title="Seasonal Options" 
-                alternatives={data.seasonalAlternatives} 
-              />
+          <CardContent>
+            <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700 text-sm max-h-[400px] overflow-y-auto">
+              {data.rawAlternativesText}
             </div>
-          )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-md bg-gray-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
+            <CardDescription>
+              No AI-generated alternatives available
+            </CardDescription>
+          </CardHeader>
           
-          {data.localAlternatives && data.localAlternatives.length > 0 && (
-            <div>
-              <AlternativesSection 
-                title="Local Options" 
-                alternatives={data.localAlternatives} 
-              />
+          <CardContent>
+            <div className="text-center py-6">
+              <p className="text-gray-500">
+                AI data could not be generated. Please try again or check your Hugging Face API key.
+              </p>
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       )}
       
       <div className="flex flex-col items-center space-y-3">

@@ -1,20 +1,77 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProduceForm from '../components/ProduceForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 import LoadingState from '../components/LoadingState';
+import ApiKeyInput from '../components/ApiKeyInput';
 import { Leaf } from 'lucide-react';
 import { type ProduceInfo, analyzeProduceSustainability } from '../services/produceAIService';
 import { toast } from "@/components/ui/use-toast";
+import { env } from "@huggingface/transformers";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<ProduceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const storedKey = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
+    if (storedKey) {
+      setApiKey(storedKey);
+      // Also set it for the current session using bracket notation
+      env['accessToken'] = storedKey;
+    }
+  }, []);
+
+  // Listen for API key updates
+  useEffect(() => {
+    const handleTokenUpdate = () => {
+      const storedKey = localStorage.getItem('VITE_HUGGING_FACE_TOKEN');
+      if (storedKey) {
+        setApiKey(storedKey);
+        // Also set it for the current session using bracket notation
+        env['accessToken'] = storedKey;
+      }
+    };
+
+    window.addEventListener('huggingface-token-updated', handleTokenUpdate);
+    return () => {
+      window.removeEventListener('huggingface-token-updated', handleTokenUpdate);
+    };
+  }, []);
+
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('VITE_HUGGING_FACE_TOKEN', key);
+    // Also set it for the current session using bracket notation
+    env['accessToken'] = key;
+    
+    toast({
+      title: "API Key Saved",
+      description: "Your Hugging Face API key has been saved.",
+      variant: "default",
+    });
+  };
 
   const handleSubmit = async (formData: any) => {
     setIsLoading(true);
     setError(null);
+    
+    // Check if API key is set
+    if (!apiKey) {
+      setError('Please enter your Hugging Face API key before analyzing.');
+      setIsLoading(false);
+      
+      toast({
+        title: "API Key Missing",
+        description: "Please enter your Hugging Face API key to use the AI features.",
+        variant: "destructive",
+      });
+      
+      return;
+    }
     
     try {
       console.log("Analyzing produce sustainability...");
@@ -27,13 +84,12 @@ const Index = () => {
       );
       
       console.log("Analysis results:", data);
-      console.log("Seasonal alternatives:", data.seasonalAlternatives);
-      console.log("Local alternatives:", data.localAlternatives);
       
-      if (data.seasonalAlternatives.length === 0 && data.localAlternatives.length === 0) {
+      // Check if alternatives were generated successfully
+      if (!data.rawAlternativesText || data.rawAlternativesText.trim() === '') {
         toast({
           title: "No Alternatives Found",
-          description: "We couldn't find specific alternatives for this produce. Consider searching for a different item.",
+          description: "We couldn't find alternatives for this produce. Consider searching for a different item.",
           variant: "default",
         });
       }
@@ -73,6 +129,9 @@ const Index = () => {
         </header>
 
         <main className="space-y-8">
+          {/* API Key Input */}
+          <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} apiKey={apiKey} />
+          
           {!results && !isLoading && (
             <ProduceForm onSubmit={handleSubmit} isLoading={isLoading} />
           )}
