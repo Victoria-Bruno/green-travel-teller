@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { pipeline, env } from "@huggingface/transformers";
 import { calculateDistance, getUserLocationCoordinates } from "./googleMapsService";
@@ -28,17 +29,17 @@ const loadModel = async () => {
     const accessToken = import.meta.env.VITE_HUGGING_FACE_TOKEN;
 
     if (!accessToken) {
-      throw new Error("Hugging Face token is missing");
+      console.error("Missing Hugging Face token in environment variables");
+      throw new Error("Hugging Face token is missing. Please add it to your environment variables.");
     }
     
-    // Set access token correctly
+    // Set access token correctly before creating pipeline
     env.accessToken = accessToken;
+    console.log("Access token set:", !!accessToken);
 
-    // Create pipeline with proper options for text generation
-    const generationModel = await pipeline("text-generation", "google/gemma-2b-it", {
-      revision: "main", // Ensures the latest model version is loaded
-    });
-
+    // Use a simpler model with fewer parameters for better browser performance
+    const generationModel = await pipeline("text-generation", "google/gemma-2b-it");
+    
     console.log("Model loaded successfully:", !!generationModel);
     return generationModel;
   } catch (error) {
@@ -84,13 +85,13 @@ const getRipeningMethodInfo = async (
     }
 
     // Format prompt properly for gemma model
-    const prompt = `Describe which ripening method is used for ${produceName} imported in ${userLocation}?`;
+    const prompt = `Describe how ${produceName} is typically ripened when imported to ${userLocation}.`;
 
     console.log("Generating ripening info with prompt:", prompt);
     
     // Call the AI model with proper parameters
     const result = await generationModel(prompt, { 
-      max_length: 150,
+      max_new_tokens: 150,
       temperature: 0.3
     });
     
@@ -135,7 +136,7 @@ const generateSustainableAlternatives = async (
     
     // Call the AI model with correct parameters
     const result = await generationModel(prompt, { 
-      max_length: 250,  // Increased to get more complete responses
+      max_new_tokens: 250,
       temperature: 0.3,
     }); 
 
@@ -189,10 +190,10 @@ export const analyzeProduceSustainability = async (
     // Load the AI generation model - only when needed
     const generationModel = await loadModel();
     
-    if (!generationModel) {
-      throw new Error("Failed to load AI generation model");
-    }
-
+    // If model fails to load, use fallback approach
+    let ripeningMethod = "Information not available";
+    let rawAlternativesText = "No alternatives available";
+    
     // Calculate travel distance
     toast({
       title: "Calculating distance",
@@ -227,15 +228,24 @@ export const analyzeProduceSustainability = async (
     // Calculate CO2 impact
     const co2Impact = calculateCO2Impact(travelDistance);
 
-    // Get ripening method info - Now storing the raw text
-    const ripeningMethod = await getRipeningMethodInfo(produceName, userLocationString, generationModel);
+    // Only attempt to generate AI content if the model loaded successfully
+    if (generationModel) {
+      // Get ripening method info
+      ripeningMethod = await getRipeningMethodInfo(produceName, userLocationString, generationModel);
 
-    // Get sustainable alternatives as raw text
-    const rawAlternativesText = await generateSustainableAlternatives(
-      produceName,
-      userLocationString,
-      generationModel
-    );
+      // Get sustainable alternatives as raw text
+      rawAlternativesText = await generateSustainableAlternatives(
+        produceName,
+        userLocationString,
+        generationModel
+      );
+    } else {
+      toast({
+        title: "Using simplified analysis",
+        description: "AI model could not be loaded. Using basic calculations only.",
+        variant: "default",
+      });
+    }
 
     // Create the final result with raw text
     const result: ProduceInfo = {

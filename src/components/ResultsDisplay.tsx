@@ -19,9 +19,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
   
   const impactData = getImpactLevel(data.co2Impact);
   
+  // Check if we have valid data for the ripening method
+  const hasRipeningData = data.ripeningMethod && 
+                         data.ripeningMethod !== "Information not available" &&
+                         data.ripeningMethod !== "Information not available due to an error.";
+                         
+  // Check if we have valid alternatives data                
+  const hasAlternativesData = data.rawAlternativesText && 
+                             data.rawAlternativesText !== "No alternatives available" &&
+                             !data.rawAlternativesText.includes("Error generating alternatives");
+  
   console.log("ResultsDisplay rendering with data:", data);
-  console.log("Raw alternatives text:", data.rawAlternativesText);
-  console.log("Raw ripening info:", data.ripeningMethod);
   
   return (
     <div className="space-y-6 animate-slide-up">
@@ -73,43 +81,62 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ data, onReset }) => {
                 <Droplets className="w-3.5 h-3.5" />
                 <span>Ripening</span>
               </div>
-              <p className="text-sm font-medium text-gray-700">Ripening Information</p>
+              <p className="text-sm font-medium text-gray-700">
+                {hasRipeningData ? "Ripening Information Available" : "No Ripening Data"}
+              </p>
               <div className="flex items-center mt-1 text-xs text-gray-400">
                 <Info className="w-3 h-3 mr-1 flex-shrink-0" />
-                <span>Method info available below</span>
+                <span>{hasRipeningData ? "Method info available below" : "AI data not available"}</span>
               </div>
             </div>
           </div>
           
-          {/* Ripening Method - Raw Text */}
-          <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-100">
-            <h3 className="text-md font-medium text-gray-700 mb-2">Ripening Method Information:</h3>
-            <div className="whitespace-pre-wrap text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 max-h-[200px] overflow-y-auto">
-              {data.ripeningMethod && data.ripeningMethod !== "Information not available" 
-                ? data.ripeningMethod 
-                : "No ripening information available for this produce."}
+          {/* Ripening Method - Only show if we have valid data */}
+          {hasRipeningData && (
+            <div className="mt-6 p-4 bg-white/50 rounded-xl border border-gray-100">
+              <h3 className="text-md font-medium text-gray-700 mb-2">Ripening Method Information:</h3>
+              <div className="whitespace-pre-wrap text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 max-h-[200px] overflow-y-auto">
+                {data.ripeningMethod}
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
       
-      {/* Sustainable Alternatives Section */}
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
-          <CardDescription>
-            AI-generated alternatives to {data.name} for your location
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700 text-sm max-h-[400px] overflow-y-auto">
-            {data.rawAlternativesText && data.rawAlternativesText !== "No alternatives available" 
-              ? data.rawAlternativesText 
-              : "No sustainable alternatives information available for this produce."}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Sustainable Alternatives Section - Only show if we have valid data */}
+      {hasAlternativesData ? (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
+            <CardDescription>
+              AI-generated alternatives to {data.name} for your location
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700 text-sm max-h-[400px] overflow-y-auto">
+              {data.rawAlternativesText}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-md bg-gray-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">Sustainable Alternatives</CardTitle>
+            <CardDescription>
+              No AI-generated alternatives available
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <div className="text-center py-6">
+              <p className="text-gray-500">
+                AI data could not be generated. Please try again or check your Hugging Face API key.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <div className="flex flex-col items-center space-y-3">
         <button

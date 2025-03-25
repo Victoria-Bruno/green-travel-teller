@@ -23,13 +23,19 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onApiKeySubmit, apiKey }) => 
     e.preventDefault();
     onApiKeySubmit(key);
     setIsSaved(true);
+    
+    // Store in env-like variable that can be accessed by the AI service
+    window.localStorage.setItem('VITE_HUGGING_FACE_TOKEN', key);
+    
+    // Make it available to the current session
+    window.dispatchEvent(new CustomEvent('huggingface-token-updated'));
   };
 
   return (
     <div className="border border-sage-100 rounded-xl p-4 mb-5 bg-white/50">
       <div className="flex items-center mb-3">
         <KeyRound className="w-4 h-4 text-sage-600 mr-2" />
-        <h3 className="text-sm font-medium text-gray-700">OpenAI API Key</h3>
+        <h3 className="text-sm font-medium text-gray-700">Hugging Face API Key</h3>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-2">
@@ -40,7 +46,7 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onApiKeySubmit, apiKey }) => 
             setKey(e.target.value);
             setIsSaved(false);
           }}
-          placeholder="Enter your OpenAI API key"
+          placeholder="Enter your Hugging Face API key"
           className="bg-white/80 border-sage-200 text-sm"
         />
         <div className="flex justify-between items-center">
